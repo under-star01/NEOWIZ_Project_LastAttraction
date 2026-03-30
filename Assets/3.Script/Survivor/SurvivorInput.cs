@@ -9,13 +9,15 @@ public class SurvivorInput : MonoBehaviour
     private InputAction lookAction;
     private InputAction runAction;
     private InputAction crouchAction;
-    private InputAction interactAction;
+    private InputAction interactAction1;
+    private InputAction interactAction2;
 
     public Vector2 Move => moveAction.ReadValue<Vector2>(); //WASD
     public Vector2 Look => lookAction.ReadValue<Vector2>(); //¸¶¿ì½º
     public bool IsRunning => runAction.IsPressed(); // Shift
     public bool IsCrouching => crouchAction.IsPressed(); // Left Ctrl
-    public bool IsInteracting => interactAction.IsPressed(); // ÁÂÅ¬¸¯
+    public bool IsInteracting1 => interactAction1.IsPressed(); // ÁÂÅ¬¸¯
+    public bool IsInteracting2 => interactAction2.WasPressedThisFrame(); // SPACE
 
     private void Awake()
     {
@@ -25,6 +27,7 @@ public class SurvivorInput : MonoBehaviour
         lookAction = playerInput.actions["Look"];
         runAction = playerInput.actions["Run"];
         crouchAction = playerInput.actions["Crouch"];
-        interactAction = playerInput.actions["Interact"];
+        interactAction1 = playerInput.actions["Interact1"];
+        interactAction2 = playerInput.actions["Interact2"];
     }
 }

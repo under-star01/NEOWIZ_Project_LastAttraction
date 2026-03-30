@@ -43,9 +43,18 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "Interact",
+                    "name": "Interact1",
                     "type": "Button",
                     "id": "0fe9b8b7-a7cd-449c-adc2-a5749380feaf",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Interact2",
+                    "type": "Button",
+                    "id": "335ebc80-aebe-4cab-9c4e-45b5e0fa723c",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -148,7 +157,18 @@
                     "interactions": "",
                     "processors": "",
                     "groups": ";PC",
-                    "action": "Interact",
+                    "action": "Interact1",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "aba8aabb-f1b8-403c-8081-127de40ca1b8",
+                    "path": "<Keyboard>/space",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";PC",
+                    "action": "Interact2",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

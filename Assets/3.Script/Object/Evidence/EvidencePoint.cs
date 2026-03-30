@@ -2,6 +2,8 @@ using UnityEngine;
 
 public class EvidencePoint : MonoBehaviour, IInteractable
 {
+    public InteractType InteractType => InteractType.Hold;
+
     [SerializeField] private float interactTime = 10f;
     [SerializeField] private ProgressUI progressUI;
 
@@ -12,6 +14,7 @@ public class EvidencePoint : MonoBehaviour, IInteractable
     private float progress;
 
     private SurvivorInteractor playerInteractor;
+    private SurvivorMove playerMove;
 
     public void SetZone(EvidenceZone evidenceZone)
     {
@@ -35,6 +38,9 @@ public class EvidencePoint : MonoBehaviour, IInteractable
 
         isInteracting = true;
 
+        FacePlayerToEvidence();
+        LockPlayerMovement(true);
+
         progressUI?.Show();
         progressUI?.SetProgress(progress / interactTime);
 
@@ -47,6 +53,8 @@ public class EvidencePoint : MonoBehaviour, IInteractable
 
         isInteracting = false;
         progress = 0f;
+
+        LockPlayerMovement(false);
 
         progressUI?.Hide();
 
@@ -78,6 +86,10 @@ public class EvidencePoint : MonoBehaviour, IInteractable
 
         if (playerInteractor != null)
         {
+            playerMove = playerInteractor.GetComponent<SurvivorMove>();
+            if (playerMove == null)
+                playerMove = playerInteractor.GetComponentInParent<SurvivorMove>();
+
             playerInteractor.SetInteractable(this);
             Debug.Log($"{name} 범위 진입");
         }
@@ -98,7 +110,11 @@ public class EvidencePoint : MonoBehaviour, IInteractable
         }
 
         if (playerInteractor == interactor)
+        {
+            LockPlayerMovement(false);
             playerInteractor = null;
+            playerMove = null;
+        }
     }
 
     private void CompleteInvestigation()
@@ -106,6 +122,8 @@ public class EvidencePoint : MonoBehaviour, IInteractable
         isCompleted = true;
         isInteracting = false;
         progress = interactTime;
+
+        LockPlayerMovement(false);
 
         progressUI?.SetProgress(1f);
         progressUI?.Hide();
@@ -121,5 +139,25 @@ public class EvidencePoint : MonoBehaviour, IInteractable
         }
 
         gameObject.SetActive(false);
+    }
+
+    private void FacePlayerToEvidence()
+    {
+        if (playerMove == null)
+            return;
+
+        Vector3 lookDir = transform.position - playerMove.transform.position;
+        lookDir.y = 0f;
+
+        if (lookDir.sqrMagnitude <= 0.001f)
+            return;
+
+        playerMove.FaceDirection(lookDir.normalized);
+    }
+
+    private void LockPlayerMovement(bool value)
+    {
+        if (playerMove != null)
+            playerMove.SetMoveLock(value);
     }
 }

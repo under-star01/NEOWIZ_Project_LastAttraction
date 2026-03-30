@@ -1,10 +1,10 @@
 using UnityEngine;
 
-
 public class SurvivorMove : MonoBehaviour
 {
     [Header("참조")]
-    [SerializeField] private Transform cameraRoot; // 카메라루트
+    [SerializeField] private Transform cameraYawRoot; // 카메라 좌우 회전 루트
+    [SerializeField] private Transform cameraPitchRoot; // 카메라 상하 회전 루트
     [SerializeField] private Camera playerCamera; // 카메라
     [SerializeField] private Transform modelRoot; // 모델루트
 
@@ -12,6 +12,7 @@ public class SurvivorMove : MonoBehaviour
     [SerializeField] private float walkSpeed = 2f; //걷는 속도
     [SerializeField] private float runSpeed = 4f; // 달리는 속도
     [SerializeField] private float crouchSpeed = 1f; // 앉은 속도
+    [SerializeField] private float turnSpeed = 15f; // 몸 회전 속도
 
     [Header("카메라")]
     [SerializeField] private float mouseSensitivity = 0.1f; // 마우스 감도
@@ -25,16 +26,30 @@ public class SurvivorMove : MonoBehaviour
     private CharacterController controller;
     private SurvivorInput input;
 
-    private float yaw;
+    private float cameraYaw;
     private float pitch;
     private float yVelocity;
+    private bool isMoveLocked;
+
+    public void SetMoveLock(bool value)
+    {
+        isMoveLocked = value;
+    }
+
+    public void FaceDirection(Vector3 dir)
+    {
+        dir.y = 0f;
+        if (dir.sqrMagnitude <= 0.001f) return;
+
+        if (modelRoot != null)
+            modelRoot.rotation = Quaternion.LookRotation(dir.normalized);
+    }
 
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
         input = GetComponent<SurvivorInput>();
 
-        yaw = transform.eulerAngles.y;
         controller.height = standHeight;
 
         Cursor.lockState = CursorLockMode.Locked;
@@ -44,6 +59,13 @@ public class SurvivorMove : MonoBehaviour
     private void Update()
     {
         Look();
+
+        if (isMoveLocked)
+        {
+            ApplyGravityOnly();
+            return;
+        }
+
         Move();
         Crouch();
     }
@@ -52,14 +74,15 @@ public class SurvivorMove : MonoBehaviour
     {
         Vector2 look = input.Look;
 
-        yaw += look.x * mouseSensitivity;
+        cameraYaw += look.x * mouseSensitivity;
         pitch -= look.y * mouseSensitivity;
         pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
 
-        transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+        if (cameraYawRoot != null)
+            cameraYawRoot.localRotation = Quaternion.Euler(0f, cameraYaw, 0f);
 
-        if (cameraRoot != null)
-            cameraRoot.localRotation = Quaternion.Euler(pitch, 0f, 0f);
+        if (cameraPitchRoot != null)
+            cameraPitchRoot.localRotation = Quaternion.Euler(pitch, 0f, 0f);
     }
 
     private void Move()
@@ -83,7 +106,7 @@ public class SurvivorMove : MonoBehaviour
 
         if (input.IsCrouching)
             speed = crouchSpeed;
-        else if (input.IsRunning && moveInput.y > 0.1f)
+        else if (input.IsRunning)
             speed = runSpeed;
 
         if (controller.isGrounded)
@@ -91,15 +114,31 @@ public class SurvivorMove : MonoBehaviour
         else
             yVelocity += Physics.gravity.y * Time.deltaTime;
 
-        move.y = yVelocity;
-        controller.Move(move * speed * Time.deltaTime);
+        Vector3 finalMove = move;
+        finalMove.y = yVelocity;
+        controller.Move(finalMove * speed * Time.deltaTime);
 
-        if (moveInput.sqrMagnitude > 0.01f && modelRoot != null)
+        if (move.sqrMagnitude > 0.001f && modelRoot != null)
         {
-            Vector3 lookDir = new Vector3(move.x, 0f, move.z);
-            if (lookDir != Vector3.zero)
-                modelRoot.forward = lookDir;
+            Quaternion targetRot = Quaternion.LookRotation(move);
+
+            modelRoot.rotation = Quaternion.Slerp(
+                modelRoot.rotation,
+                targetRot,
+                turnSpeed * Time.deltaTime
+            );
         }
+    }
+
+    private void ApplyGravityOnly()
+    {
+        if (controller.isGrounded)
+            yVelocity = -1f;
+        else
+            yVelocity += Physics.gravity.y * Time.deltaTime;
+
+        Vector3 gravityMove = new Vector3(0f, yVelocity, 0f);
+        controller.Move(gravityMove * Time.deltaTime);
     }
 
     private void Crouch()

@@ -3,8 +3,8 @@ using UnityEngine;
 public class SurvivorInteractor : MonoBehaviour
 {
     private SurvivorInput input;
-    private IInteractable currentOB; // 최근에 상호작용한 오브젝트
-    private bool isInteracting; // 상호작용중인지
+    private IInteractable currentOB;
+    private bool isInteracting;
 
     public bool IsInteracting => isInteracting;
 
@@ -26,7 +26,19 @@ public class SurvivorInteractor : MonoBehaviour
             return;
         }
 
-        if (input.IsInteracting)
+        if (currentOB.InteractType == InteractType.Hold)
+        {
+            HandleHoldInteraction();
+        }
+        else if (currentOB.InteractType == InteractType.Press)
+        {
+            HandlePressInteraction();
+        }
+    }
+
+    private void HandleHoldInteraction()
+    {
+        if (input.IsInteracting1)
         {
             if (!isInteracting)
             {
@@ -41,6 +53,14 @@ public class SurvivorInteractor : MonoBehaviour
                 isInteracting = false;
                 currentOB.EndInteract();
             }
+        }
+    }
+
+    private void HandlePressInteraction()
+    {
+        if (input.IsInteracting2)
+        {
+            currentOB.BeginInteract();
         }
     }
 
