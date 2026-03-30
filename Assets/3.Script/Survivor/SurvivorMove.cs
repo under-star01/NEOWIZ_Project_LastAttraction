@@ -36,7 +36,9 @@ public class SurvivorMove : MonoBehaviour
 
         yaw = transform.eulerAngles.y;
         controller.height = standHeight;
-        controller.center = new Vector3(0f, standHeight * 0.5f, 0f);
+
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
     }
 
     private void Update()
@@ -106,7 +108,5 @@ public class SurvivorMove : MonoBehaviour
             controller.height = crouchHeight;
         else
             controller.height = standHeight;
-
-        controller.center = new Vector3(0f, controller.height * 0.5f, 0f);
     }
 }

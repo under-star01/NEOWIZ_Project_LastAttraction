@@ -1,14 +1,12 @@
 using UnityEngine;
 
-[RequireComponent(typeof(SurvivorInput))]
 public class SurvivorInteractor : MonoBehaviour
 {
-    [SerializeField] private Transform interactOrigin;
-    [SerializeField] private float interactDistance = 2f;
-    [SerializeField] private LayerMask interactLayer;
-
     private SurvivorInput input;
-    private IInteractable currentOB;
+    private IInteractable currentOB; // 최근에 상호작용한 오브젝트
+    private bool isInteracting; // 상호작용중인지
+
+    public bool IsInteracting => isInteracting;
 
     private void Awake()
     {
@@ -22,57 +20,45 @@ public class SurvivorInteractor : MonoBehaviour
 
     private void HandleInteraction()
     {
-        IInteractable target = FindInteractable();
+        if (currentOB == null)
+        {
+            isInteracting = false;
+            return;
+        }
 
-        // 누르고 있는 중
         if (input.IsInteracting)
         {
-            // 새 대상에 처음 진입
-            if (target != null && currentInteractable == null)
+            if (!isInteracting)
             {
-                currentInteractable = target;
-                currentInteractable.BeginInteract();
-            }
-            // 대상이 바뀐 경우
-            else if (target != currentInteractable)
-            {
-                if (currentInteractable != null)
-                    currentInteractable.EndInteract();
-
-                currentInteractable = target;
-
-                if (currentInteractable != null)
-                    currentInteractable.BeginInteract();
+                isInteracting = true;
+                currentOB.BeginInteract();
             }
         }
-        // 버튼을 뗀 경우
         else
         {
-            if (currentInteractable != null)
+            if (isInteracting)
             {
-                currentInteractable.EndInteract();
-                currentInteractable = null;
+                isInteracting = false;
+                currentOB.EndInteract();
             }
-        }
-
-        // 누르고 있는데 대상이 사라진 경우도 정리
-        if (input.IsInteracting && target == null && currentInteractable != null)
-        {
-            currentInteractable.EndInteract();
-            currentInteractable = null;
         }
     }
 
-    private IInteractable FindInteractable()
+    public void SetInteractable(IInteractable interactable)
     {
-        if (interactOrigin == null)
-            interactOrigin = transform;
+        currentOB = interactable;
+    }
 
-        if (Physics.Raycast(interactOrigin.position, interactOrigin.forward, out RaycastHit hit, interactDistance, interactLayer))
+    public void ClearInteractable(IInteractable interactable)
+    {
+        if (currentOB != interactable) return;
+
+        if (isInteracting)
         {
-            return hit.collider.GetComponentInParent<IInteractable>();
+            isInteracting = false;
+            currentOB.EndInteract();
         }
 
-        return null;
+        currentOB = null;
     }
 }
