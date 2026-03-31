@@ -1,0 +1,51 @@
+using UnityEngine;
+using UnityEngine.UI;
+
+public class UIManager : MonoBehaviour
+{
+    [Header("Buttons")]
+    [SerializeField] private Button killerButton;
+    [SerializeField] private Button survivorButton;
+
+    private void Awake()
+    {
+        BindButtons();
+    }
+
+    private void BindButtons()
+    {
+        if (killerButton != null)
+        {
+            killerButton.onClick.RemoveAllListeners();
+            killerButton.onClick.AddListener(OnClickConnectKiller);
+        }
+
+        if (survivorButton != null)
+        {
+            survivorButton.onClick.RemoveAllListeners();
+            survivorButton.onClick.AddListener(OnClickConnectSurvivor);
+        }
+    }
+
+    public void OnClickConnectKiller()
+    {
+        if (CustomNetworkManager.Instance == null)
+        {
+            Debug.LogError("[UIManager] CustomNetworkManager Instance가 없습니다.");
+            return;
+        }
+
+        CustomNetworkManager.Instance.ConnectAsKiller();
+    }
+
+    public void OnClickConnectSurvivor()
+    {
+        if (CustomNetworkManager.Instance == null)
+        {
+            Debug.LogError("[UIManager] CustomNetworkManager Instance가 없습니다.");
+            return;
+        }
+
+        CustomNetworkManager.Instance.ConnectAsSurvivor();
+    }
+}
