@@ -35,6 +35,7 @@ public class LobbySceneBinder : MonoBehaviour
                 break;
 
             case JoinRole.Survivor:
+            case JoinRole.None:
                 survivorLobbyCamera.Priority = livePriority;
                 killerLobbyCamera.Priority = idlePriority;
                 Debug.Log("[LobbySceneBinder] Survivor 로비 카메라 활성화");
