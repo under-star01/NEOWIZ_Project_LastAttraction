@@ -51,6 +51,9 @@ public class EvidencePoint : MonoBehaviour, IInteractable
         // SurvivorMove에서 Look()는 계속 돌기 때문에 마우스 회전은 가능
         LockMovement(true);
 
+        // 써칭 애니메이션 시작
+        SetSearching(true);
+
         progressUI?.Show();
         progressUI?.SetProgress(progress / interactTime);
 
@@ -67,6 +70,9 @@ public class EvidencePoint : MonoBehaviour, IInteractable
         progress = 0f; // 중간 취소 시 처음부터 다시
 
         LockMovement(false);
+
+        // 써칭 애니메이션 종료
+        SetSearching(false);
 
         progressUI?.Hide();
 
@@ -97,6 +103,9 @@ public class EvidencePoint : MonoBehaviour, IInteractable
         progress = interactTime;
 
         LockMovement(false);
+
+        // 써칭 애니메이션 종료
+        SetSearching(false);
 
         progressUI?.SetProgress(1f);
         progressUI?.Hide();
@@ -135,6 +144,13 @@ public class EvidencePoint : MonoBehaviour, IInteractable
     {
         if (playerMove != null)
             playerMove.SetMoveLock(value);
+    }
+
+    // 써칭 애니메이션 on/off
+    private void SetSearching(bool value)
+    {
+        if (playerMove != null)
+            playerMove.SetSearching(value);
     }
 
     // 플레이어가 범위 안에 들어오면 상호작용 가능 대상으로 등록
@@ -177,6 +193,8 @@ public class EvidencePoint : MonoBehaviour, IInteractable
         if (playerInteractor == interactor)
         {
             LockMovement(false);
+            SetSearching(false);
+
             playerInteractor = null;
             playerMove = null;
         }

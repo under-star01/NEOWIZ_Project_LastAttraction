@@ -243,6 +243,17 @@ public class SurvivorMove : MonoBehaviour
         animator.SetTrigger(triggerName);
     }
 
+    public void SetVaulting(bool value)
+    {
+        animator.SetBool("IsVaulting", value);
+    }
+
+    public void SetSearching(bool value)
+    {
+        if (animator != null)
+            animator.SetBool("IsSearching", value);
+    }
+
     // 이동 애니메이션을 멈추고 현재 상태만 반영
     public void StopAnimation()
     {

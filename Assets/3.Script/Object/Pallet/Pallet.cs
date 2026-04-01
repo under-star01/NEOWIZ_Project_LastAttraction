@@ -153,6 +153,12 @@ public class Pallet : MonoBehaviour, IInteractable
             oppositePoint = leftPoint;
         }
 
+        SurvivorMove move = GetCurrentMove();
+        if (move != null)
+        {
+            move.SetVaulting(true);
+        }
+
         isVaulting = true;
 
         // 이동 막음
@@ -192,6 +198,11 @@ public class Pallet : MonoBehaviour, IInteractable
 
         LockMovement(false);
         isVaulting = false;
+
+        if (move != null)
+        {
+            move.SetVaulting(false);
+        }
     }
 
     // 포인트/방향

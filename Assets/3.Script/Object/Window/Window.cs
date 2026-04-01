@@ -52,6 +52,12 @@ public class Window : MonoBehaviour, IInteractable
             oppositePoint = leftPoint;
         }
 
+        SurvivorMove move = GetCurrentMove();
+        if (move != null)
+        {
+            move.SetVaulting(true);
+        }
+
         isVaulting = true;
 
         // 이동만 막음
@@ -83,6 +89,11 @@ public class Window : MonoBehaviour, IInteractable
 
         LockMovement(false);
         isVaulting = false;
+
+        if (move != null)
+        {
+            move.SetVaulting(false);
+        }
     }
 
     // 현재 플레이어가 서 있는 쪽 포인트 구하기
