@@ -12,11 +12,12 @@ public class Pallet : MonoBehaviour, IInteractable
     [SerializeField] private Collider droppedCollider;  // 넘어진 판자 콜라이더
     [SerializeField] private Transform leftPoint;       // 판자 왼쪽 포인트
     [SerializeField] private Transform rightPoint;      // 판자 오른쪽 포인트
+    [SerializeField] private Vector3 upPoint = new Vector3(0, 0.2f, 0);
 
     [Header("이동/연출")]
-    [SerializeField] private float moveToPointSpeed = 50f; // 포인트까지 걸어가는 속도
+    [SerializeField] private float moveToPointSpeed = 5f; // 포인트까지 걸어가는 속도
     [SerializeField] private float dropActionTime = 0.5f; // 판자 내리는 연출 시간
-    [SerializeField] private float vaultTime = 4f;      // 반대편으로 넘어가는 시간
+    [SerializeField] private float vaultSpeed = 4f;      // 반대편으로 넘어가는 시간
 
     [Header("밀어내기")]
     [SerializeField] private float pushDistance = 1.2f;   // 겹친 대상 밀어내는 거리
@@ -92,11 +93,17 @@ public class Pallet : MonoBehaviour, IInteractable
         // 판자 내리는 방향 보게 만들기
         FaceToPallet();
 
+        // CharacterController 켜진 상태에서 위치를 직접 바꾸면 충돌 문제가 날 수 있어서 잠깐 끔
+        CharacterController controller = currentInteractor.GetComponent<CharacterController>();
+        controller.enabled = false;
+
+        // 걷는 모션 끄고
+        StopAnim();
+
         // 먼저 자기 쪽 포인트로 이동
         yield return MoveToPoint(sidePoint.position, moveToPointSpeed);
 
-        // 걷는 모션 끄고 드롭 애니메이션 실행
-        StopAnim();
+        // 드롭 애니메이션 실행
         PlayAnim("Drop");
 
         // 판자 애니메이션 실행
@@ -107,6 +114,8 @@ public class Pallet : MonoBehaviour, IInteractable
 
         // 실제 상태 변경
         Drop();
+
+        controller.enabled = true;
 
         LockMovement(false);
         isDropping = false;
@@ -152,9 +161,21 @@ public class Pallet : MonoBehaviour, IInteractable
         // 넘는 방향 보게 만들기
         FaceToPallet();
 
-        // 걷기/뛰기 모션 끄고 Vault 트리거 실행
+
+        // CharacterController 켜진 상태에서 위치를 직접 바꾸면 충돌 문제가 날 수 있어서 잠깐 끔
+        CharacterController controller = currentInteractor.GetComponent<CharacterController>();
+        controller.enabled = false;
+
+        Vector3 start = sidePoint.position + upPoint;
+        Vector3 arrive = oppositePoint.position + upPoint;
+
+        // 모션 끄고
         StopAnim();
 
+        // 먼저 현재 쪽 포인트로 이동
+        yield return MoveToPoint(start, moveToPointSpeed);
+
+        // Vault 트리거 실행
         if (isLeftSide)
         {
             PlayAnim("LeftVault");
@@ -164,15 +185,8 @@ public class Pallet : MonoBehaviour, IInteractable
             PlayAnim("RightVault");
         }
 
-        // CharacterController 켜진 상태에서 위치를 직접 바꾸면 충돌 문제가 날 수 있어서 잠깐 끔
-        CharacterController controller = currentInteractor.GetComponent<CharacterController>();
-        controller.enabled = false;
-
-        // 먼저 현재 쪽 포인트로 이동
-        yield return MoveToPoint(sidePoint.position, moveToPointSpeed);
-
-        // 2단계: 반대편 포인트로 부드럽게 이동
-        yield return MoveToPoint(oppositePoint.position, vaultTime);
+        // 반대편 포인트로 부드럽게 이동
+        yield return MoveToPoint(arrive, vaultSpeed);
 
         controller.enabled = true;
 

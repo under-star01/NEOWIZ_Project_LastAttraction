@@ -9,9 +9,10 @@ public class Window : MonoBehaviour, IInteractable
     [Header("참조")]
     [SerializeField] private Transform leftPoint;   // 창틀 왼쪽 포인트
     [SerializeField] private Transform rightPoint;  // 창틀 오른쪽 포인트
+    [SerializeField] private Vector3 upPoint = new Vector3(0, 0.5f,0);
 
     [Header("이동/연출")]
-    [SerializeField] private float moveToPointSpeed = 50f; // 자기 쪽 포인트까지 이동 속도
+    [SerializeField] private float moveToPointSpeed = 5f; // 자기 쪽 포인트까지 이동 속도
     [SerializeField] private float vaultTime = 4f;         // 반대편으로 넘어가는 속도
 
     private SurvivorInteractor currentInteractor; // 현재 범위 안 플레이어
@@ -60,18 +61,23 @@ public class Window : MonoBehaviour, IInteractable
         FaceToWindow();
 
         // 걷기/뛰기 모션 끄고 Vault 트리거 실행
-        StopAnim();
-        PlayAnim("Vault");
 
         // CharacterController 잠깐 끄기
         CharacterController controller = currentInteractor.GetComponent<CharacterController>();
         controller.enabled = false;
 
-        // 먼저 현재 쪽 포인트로 이동
-        yield return MoveToPoint(sidePoint.position, moveToPointSpeed);
+        Vector3 start = sidePoint.position + upPoint;
+        Vector3 arrive = oppositePoint.position + upPoint;
 
-        // 반대편 포인트로 이동
-        yield return MoveToPoint(oppositePoint.position, vaultTime);
+        StopAnim();
+
+        // 먼저 현재 쪽 포인트로 이동
+        yield return MoveToPoint(start, moveToPointSpeed);
+
+        PlayAnim("LeftVault");
+
+        // 반대편 포인트로 부드럽게 이동
+        yield return MoveToPoint(arrive, vaultTime);
 
         controller.enabled = true;
 
