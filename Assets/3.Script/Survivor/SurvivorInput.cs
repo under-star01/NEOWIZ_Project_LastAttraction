@@ -1,24 +1,76 @@
+using Mirror;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class SurvivorInput : MonoBehaviour
+public class SurvivorInput : NetworkBehaviour
 {
-    private PlayerInput playerInput;
+    private InputSystem inputSys;
 
-    // Input Action 참조
-    private InputAction moveAction;
-    private InputAction lookAction;
-    private InputAction runAction;
-    private InputAction crouchAction;
-    private InputAction interactAction1;
-    private InputAction interactAction2;
+    public Vector2 Move
+    {
+        get
+        {
+            if (inputSys == null) return Vector2.zero;
+            return inputSys.Player.Move.ReadValue<Vector2>();
+        }
+    }
 
-    // 외부에서 쉽게 가져다 쓸 수 있도록 프로퍼티로 공개
-    public Vector2 Move => TestMng.inputSys.Player.Move.ReadValue<Vector2>();             // WASD
-    public Vector2 Look => TestMng.inputSys.Player.Look.ReadValue<Vector2>();             // 마우스 이동
-    public bool IsRunning => TestMng.inputSys.Player.Run.IsPressed();                     // Shift
-    public bool IsCrouching => TestMng.inputSys.Player.Crouch.IsPressed();                // Ctrl
-    public bool IsInteracting1 => TestMng.inputSys.Player.Interact1.IsPressed();          // 좌클릭 유지
-    public bool IsInteracting2 => TestMng.inputSys.Player.Interact2.WasPressedThisFrame(); // Space 1회 입력
+    public Vector2 Look
+    {
+        get
+        {
+            if (inputSys == null) return Vector2.zero;
+            return inputSys.Player.Look.ReadValue<Vector2>();
+        }
+    }
 
+    public bool IsRunning
+    {
+        get
+        {
+            if (inputSys == null) return false;
+            return inputSys.Player.Run.IsPressed();
+        }
+    }
+
+    public bool IsCrouching
+    {
+        get
+        {
+            if (inputSys == null) return false;
+            return inputSys.Player.Crouch.IsPressed();
+        }
+    }
+
+    public bool IsInteracting1
+    {
+        get
+        {
+            if (inputSys == null) return false;
+            return inputSys.Player.Interact1.IsPressed();
+        }
+    }
+
+    public bool IsInteracting2
+    {
+        get
+        {
+            if (inputSys == null) return false;
+            return inputSys.Player.Interact2.WasPressedThisFrame();
+        }
+    }
+
+    public override void OnStartLocalPlayer()
+    {
+        inputSys = new InputSystem();
+        inputSys.Player.Enable();
+    }
+
+    public override void OnStopClient()
+    {
+        if (isLocalPlayer && inputSys != null)
+        {
+            inputSys.Player.Disable();
+        }
+    }
 }

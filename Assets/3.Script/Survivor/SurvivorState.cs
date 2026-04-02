@@ -1,38 +1,38 @@
 using System.Collections;
+using Mirror;
 using UnityEngine;
 
 public enum SurvivorCondition
 {
-    Healthy,   // 정상
-    Injured,   // 부상
-    Downed     // 쓰러짐
+    Healthy,
+    Injured,
+    Downed
 }
 
-public class SurvivorState : MonoBehaviour
+public class SurvivorState : NetworkBehaviour
 {
     [Header("참조")]
     [SerializeField] private Animator animator;
     [SerializeField] private SurvivorInteractor interactor;
 
-    [Header("디버그")]
-    [SerializeField] private SurvivorCondition debugCondition = SurvivorCondition.Healthy;
-
     [Header("다운 연출")]
-    [SerializeField] private float downHitDuration = 1.2f; // 다운 피격 애니메이션 시간
+    [SerializeField] private float downHitDuration = 1.2f;
 
     private SurvivorMove move;
 
-    private int normalLayer; // 기본 레이어 번호
-    private int downedLayer; // 다운 레이어 번호
+    private int normalLayer;
+    private int downedLayer;
 
-    private bool isToDowned; // 다운 피격 연출 중인지
-    private SurvivorCondition lastDebugCondition; // 마지막으로 적용한 디버그 상태
+    [SyncVar(hook = nameof(OnConditionChanged))]
+    private SurvivorCondition currentCondition = SurvivorCondition.Healthy;
 
-    public SurvivorCondition CurrentCondition { get; private set; } = SurvivorCondition.Healthy;
+    private bool isToDowned;
 
-    public bool IsHealthy => CurrentCondition == SurvivorCondition.Healthy;
-    public bool IsInjured => CurrentCondition == SurvivorCondition.Injured;
-    public bool IsDowned => CurrentCondition == SurvivorCondition.Downed;
+    public SurvivorCondition CurrentCondition => currentCondition;
+
+    public bool IsHealthy => currentCondition == SurvivorCondition.Healthy;
+    public bool IsInjured => currentCondition == SurvivorCondition.Injured;
+    public bool IsDowned => currentCondition == SurvivorCondition.Downed;
     public bool IsBusy => isToDowned;
 
     private void Awake()
@@ -47,77 +47,68 @@ public class SurvivorState : MonoBehaviour
 
         normalLayer = LayerMask.NameToLayer("Survivor");
         downedLayer = LayerMask.NameToLayer("Downed");
-
-        // 시작 상태는 디버그 값 기준으로 맞춤
-        SetCondition(debugCondition);
-        lastDebugCondition = debugCondition;
     }
 
-    private void Update()
+    public override void OnStartClient()
     {
-        // 다운 전환 중에는 디버그 상태 변경 막기
-        if (isToDowned)
-            return;
-
-        // 인스펙터에서 debugCondition 값을 바꿨을 때만 자동 적용
-        if (debugCondition != lastDebugCondition)
-        {
-            SetCondition(debugCondition);
-            lastDebugCondition = debugCondition;
-        }
+        base.OnStartClient();
+        ApplyInteractionState();
+        ApplyLayer();
+        UpdateAnimator();
     }
 
-    // 공격받았을 때 호출
+    [Server]
     public void TakeHit()
     {
-        // 다운 전환 연출 중이면 무시
         if (isToDowned)
             return;
 
-        // 정상 상태에서 맞으면 부상
-        if (CurrentCondition == SurvivorCondition.Healthy)
+        if (currentCondition == SurvivorCondition.Healthy)
         {
-            SetCondition(SurvivorCondition.Injured);
+            currentCondition = SurvivorCondition.Injured;
         }
-        // 부상 상태에서 한대 더 맞으면 다운
-        else if (CurrentCondition == SurvivorCondition.Injured)
+        else if (currentCondition == SurvivorCondition.Injured)
         {
             StartCoroutine(DownedRoutine());
-            return;
         }
-
-        // 현재 실제 상태를 디버그 값에도 맞춰줌
-        SyncDebugCondition();
     }
 
-    // 완전 회복
+    [Server]
     public void HealToHealthy()
     {
         if (isToDowned)
             return;
 
-        SetCondition(SurvivorCondition.Healthy);
-        SyncDebugCondition();
+        currentCondition = SurvivorCondition.Healthy;
     }
 
-    // 다운 상태에서 다시 부상 상태로 복귀
+    [Server]
     public void RecoverToInjured()
     {
         if (isToDowned)
             return;
 
-        SetCondition(SurvivorCondition.Injured);
-        SyncDebugCondition();
+        currentCondition = SurvivorCondition.Injured;
     }
 
-    // 다운 피격 애니메이션 후 Downed 상태 진입
+    [Server]
     private IEnumerator DownedRoutine()
     {
         isToDowned = true;
 
+        RpcPlayDownHit();
+
+        yield return new WaitForSeconds(downHitDuration);
+
+        currentCondition = SurvivorCondition.Downed;
+        isToDowned = false;
+    }
+
+    [ClientRpc]
+    private void RpcPlayDownHit()
+    {
         if (move != null)
         {
-            // 다운 피격 모션 동안만 잠깐 이동 막기
             move.SetMoveLock(true);
             move.StopAnimation();
         }
@@ -127,32 +118,26 @@ public class SurvivorState : MonoBehaviour
             animator.SetTrigger("DownHit");
         }
 
-        yield return new WaitForSeconds(downHitDuration);
-
-        // 실제 다운 상태로 변경
-        SetCondition(SurvivorCondition.Downed);
-        SyncDebugCondition();
-
-        if (move != null)
-        {
-            // 다운 상태에서는 crawl 이동을 해야 하므로 잠금 해제
-            move.SetMoveLock(false);
-        }
-
-        isToDowned = false;
+        StartCoroutine(LocalUnlockAfterDownHit());
     }
 
-    // 상태 적용
-    private void SetCondition(SurvivorCondition newCondition)
+    private IEnumerator LocalUnlockAfterDownHit()
     {
-        CurrentCondition = newCondition;
+        yield return new WaitForSeconds(downHitDuration);
 
+        if (move != null && IsDowned)
+        {
+            move.SetMoveLock(false);
+        }
+    }
+
+    private void OnConditionChanged(SurvivorCondition oldValue, SurvivorCondition newValue)
+    {
         ApplyInteractionState();
         ApplyLayer();
         UpdateAnimator();
     }
 
-    // 다운 상태면 상호작용 막기
     private void ApplyInteractionState()
     {
         if (interactor != null)
@@ -161,26 +146,19 @@ public class SurvivorState : MonoBehaviour
         }
     }
 
-    // 상태에 따라 레이어 변경
     private void ApplyLayer()
     {
         int targetLayer = normalLayer;
 
         if (IsDowned)
-        {
             targetLayer = downedLayer;
-        }
 
-        // 레이어가 없으면 그냥 넘어감
         if (targetLayer == -1)
-        {
             return;
-        }
 
         SetLayerRecursive(transform, targetLayer);
     }
 
-    // 자기 자신 + 자식들 레이어까지 전부 변경
     private void SetLayerRecursive(Transform target, int layer)
     {
         if (target.GetComponent<SurvivorHeal>() != null)
@@ -194,19 +172,11 @@ public class SurvivorState : MonoBehaviour
         }
     }
 
-    // 현재 실제 상태를 debugCondition에도 반영
-    private void SyncDebugCondition()
-    {
-        debugCondition = CurrentCondition;
-        lastDebugCondition = debugCondition;
-    }
-
-    // 애니메이터 파라미터 반영
     private void UpdateAnimator()
     {
         if (animator == null)
             return;
 
-        animator.SetInteger("Condition", (int)CurrentCondition);
+        animator.SetInteger("Condition", (int)currentCondition);
     }
 }
