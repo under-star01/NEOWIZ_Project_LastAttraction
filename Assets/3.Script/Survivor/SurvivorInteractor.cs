@@ -3,6 +3,7 @@ using UnityEngine;
 public class SurvivorInteractor : MonoBehaviour
 {
     private SurvivorInput input;
+    private SurvivorState state;
 
     // 현재 상호작용 가능한 대상 1개
     private IInteractable currentInteractable;
@@ -15,18 +16,20 @@ public class SurvivorInteractor : MonoBehaviour
     private void Awake()
     {
         input = GetComponent<SurvivorInput>();
+        state = GetComponent<SurvivorState>();
     }
 
     private void Update()
     {
-        // =========================
-        // 중요
-        // 앉아 있는 동안 "새로운" 상호작용 시작은 막고 싶지만,
-        // 이미 진행 중인 Hold 상호작용의 종료 처리까지 막으면 안 됨
-        // =========================
+        // 다운 상태에서는 상호작용 차단
+        if (state != null && state.IsDowned)
+        {
+            ForceClear();
+            return;
+        }
 
         // 현재 상호작용 중이 아니고, 앉아 있는 상태라면
-        // 새 상호작용 시작 자체를 막음
+        // 상호작용 시작 막음
         if (!isInteracting && input.IsCrouching)
         {
             return;
@@ -70,7 +73,6 @@ public class SurvivorInteractor : MonoBehaviour
         else
         {
             // 좌클릭을 떼면 정상적으로 종료
-            // 이 코드는 crouch 중이어도 계속 실행되어야 함
             if (isInteracting)
             {
                 isInteracting = false;
@@ -95,6 +97,13 @@ public class SurvivorInteractor : MonoBehaviour
     // 상호작용 가능 대상 등록
     public void SetInteractable(IInteractable interactable)
     {
+        // 다운 상태면 아예 등록 안 함
+        if (!enabled)
+            return;
+
+        if (state != null && state.IsDowned)
+            return;
+
         currentInteractable = interactable;
     }
 
@@ -106,6 +115,23 @@ public class SurvivorInteractor : MonoBehaviour
 
         // Hold 중이었다면 정상 종료 처리
         if (isInteracting)
+        {
+            isInteracting = false;
+            currentInteractable.EndInteract();
+        }
+
+        currentInteractable = null;
+    }
+
+    private void OnDisable()
+    {
+        ForceClear();
+    }
+
+    // 강제 종료 + 대상 비우기
+    private void ForceClear()
+    {
+        if (isInteracting && currentInteractable != null)
         {
             isInteracting = false;
             currentInteractable.EndInteract();

@@ -15,7 +15,7 @@ public class Window : MonoBehaviour, IInteractable
     [SerializeField] private float moveToPointSpeed = 5f; // 자기 쪽 포인트까지 이동 속도
     [SerializeField] private float vaultTime = 4f;         // 반대편으로 넘어가는 속도
 
-    private SurvivorInteractor currentInteractor; // 현재 범위 안 플레이어
+    private MonoBehaviour currentInteractor; // 현재 범위 안 플레이어
     private bool isVaulting;                      // 현재 넘는 중인지
     private bool isLeftSide;                      // 플레이어가 현재 왼쪽에 있는지
 
