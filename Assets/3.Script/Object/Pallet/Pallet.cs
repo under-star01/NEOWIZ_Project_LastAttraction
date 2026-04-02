@@ -153,20 +153,12 @@ public class Pallet : MonoBehaviour, IInteractable
             oppositePoint = leftPoint;
         }
 
-        SurvivorMove move = GetCurrentMove();
-        if (move != null)
-        {
-            move.SetVaulting(true);
-        }
-
-        isVaulting = true;
 
         // 이동 막음
         LockMovement(true);
 
         // 넘는 방향 보게 만들기
         FaceToPallet();
-
 
         // CharacterController 켜진 상태에서 위치를 직접 바꾸면 충돌 문제가 날 수 있어서 잠깐 끔
         CharacterController controller = currentInteractor.GetComponent<CharacterController>();
@@ -180,6 +172,14 @@ public class Pallet : MonoBehaviour, IInteractable
 
         // 먼저 현재 쪽 포인트로 이동
         yield return MoveToPoint(start, moveToPointSpeed);
+
+        SurvivorMove move = GetCurrentMove();
+        if (move != null)
+        {
+            move.SetVaulting(true);
+        }
+
+        isVaulting = true;
 
         // Vault 트리거 실행
         if (isLeftSide)

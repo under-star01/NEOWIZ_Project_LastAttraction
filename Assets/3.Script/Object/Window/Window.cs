@@ -52,13 +52,6 @@ public class Window : MonoBehaviour, IInteractable
             oppositePoint = leftPoint;
         }
 
-        SurvivorMove move = GetCurrentMove();
-        if (move != null)
-        {
-            move.SetVaulting(true);
-        }
-
-        isVaulting = true;
 
         // 이동만 막음
         LockMovement(true);
@@ -79,6 +72,14 @@ public class Window : MonoBehaviour, IInteractable
 
         // 먼저 현재 쪽 포인트로 이동
         yield return MoveToPoint(start, moveToPointSpeed);
+
+        SurvivorMove move = GetCurrentMove();
+        if (move != null)
+        {
+            move.SetVaulting(true);
+        }
+
+        isVaulting = true;
 
         PlayAnim("LeftVault");
 
@@ -216,7 +217,7 @@ public class Window : MonoBehaviour, IInteractable
     // 범위 안에 들어오면 상호작용 등록
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Survivor") == false)
+        if (other.CompareTag("Survivor") == false && other.CompareTag("Killer") == false)
         {
             return;
         }

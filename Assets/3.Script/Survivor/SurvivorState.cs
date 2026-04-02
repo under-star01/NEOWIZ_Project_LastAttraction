@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 public enum SurvivorCondition
@@ -15,13 +16,19 @@ public class SurvivorState : MonoBehaviour
     [Header("디버그")]
     [SerializeField] private SurvivorCondition debugCondition = SurvivorCondition.Healthy;
 
+    [Header("다운 연출")]
+    [SerializeField] private float downHitDuration = 1.2f; // 다운 피격 애니메이션 시간
+
     private SurvivorMove move;
+
+    private bool isTransitioningToDowned;
 
     public SurvivorCondition CurrentCondition { get; private set; } = SurvivorCondition.Healthy;
 
     public bool IsHealthy => CurrentCondition == SurvivorCondition.Healthy;
     public bool IsInjured => CurrentCondition == SurvivorCondition.Injured;
     public bool IsDowned => CurrentCondition == SurvivorCondition.Downed;
+    public bool IsBusy => isTransitioningToDowned;
 
     private void Awake()
     {
@@ -35,7 +42,7 @@ public class SurvivorState : MonoBehaviour
 
     private void Update()
     {
-        if (CurrentCondition != debugCondition)
+        if (CurrentCondition != debugCondition && !isTransitioningToDowned)
         {
             SetCondition(debugCondition);
         }
@@ -43,36 +50,68 @@ public class SurvivorState : MonoBehaviour
 
     public void TakeHit()
     {
+        if (isTransitioningToDowned)
+            return;
+
         if (CurrentCondition == SurvivorCondition.Healthy)
+        {
             SetCondition(SurvivorCondition.Injured);
+            animator.SetTrigger("Hit");
+        }
         else if (CurrentCondition == SurvivorCondition.Injured)
-            SetCondition(SurvivorCondition.Downed);
+        {
+            StartCoroutine(DownedRoutine());
+        }
 
         debugCondition = CurrentCondition;
     }
 
     public void HealToHealthy()
     {
+        if (isTransitioningToDowned)
+            return;
+
         SetCondition(SurvivorCondition.Healthy);
         debugCondition = CurrentCondition;
     }
 
     public void RecoverToInjured()
     {
+        if (isTransitioningToDowned)
+            return;
+
         SetCondition(SurvivorCondition.Injured);
+        debugCondition = CurrentCondition;
+    }
+
+    private IEnumerator DownedRoutine()
+    {
+        isTransitioningToDowned = true;
+
+        if (move != null)
+        {
+            move.SetMoveLock(true);
+            move.StopAnimation();
+        }
+
+        animator.SetTrigger("DownHit");
+
+        yield return new WaitForSeconds(downHitDuration);
+
+        SetCondition(SurvivorCondition.Downed);
+
+        if (move != null)
+        {
+            move.SetMoveLock(false);
+        }
+
+        isTransitioningToDowned = false;
         debugCondition = CurrentCondition;
     }
 
     private void SetCondition(SurvivorCondition newCondition)
     {
         CurrentCondition = newCondition;
-
-        if (move != null)
-        {
-            bool shouldLockMove = (CurrentCondition == SurvivorCondition.Downed);
-            move.SetMoveLock(shouldLockMove);
-        }
-
         UpdateAnimator();
     }
 
