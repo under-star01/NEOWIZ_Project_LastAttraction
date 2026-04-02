@@ -354,6 +354,7 @@ public class CustomNetworkManager : NetworkManager
     {
         base.OnStartServer();
 
+        // 각 메세지 처리할 메소드 등록
         NetworkServer.RegisterHandler<JoinRequestMessage>(OnReceiveJoinRequest, false);
         NetworkServer.RegisterHandler<RoomProbeRequestMessage>(OnReceiveRoomProbeRequest, false);
     }
@@ -366,6 +367,7 @@ public class CustomNetworkManager : NetworkManager
 
     public override void OnServerConnect(NetworkConnectionToClient conn)
     {
+        // 미리 인원 초과 상태시 차단
         if (IsRoomFull)
         {
             conn.Disconnect();
@@ -389,6 +391,7 @@ public class CustomNetworkManager : NetworkManager
     {
         base.OnStartClient();
 
+        // 각 메세지 처리할 메소드 등록
         NetworkClient.RegisterHandler<JoinDeniedMessage>(OnJoinDenied, false);
         NetworkClient.RegisterHandler<JoinAcceptedMessage>(OnJoinAccepted, false);
         NetworkClient.RegisterHandler<RoomProbeResponseMessage>(OnRoomProbeResponse, false);
@@ -404,6 +407,7 @@ public class CustomNetworkManager : NetworkManager
             return;
         }
 
+        // 최종 입장 단계 -> 최종 입장 요청
         if (isJoiningFinalRoom)
         {
             NetworkClient.Send(new JoinRequestMessage
@@ -411,6 +415,7 @@ public class CustomNetworkManager : NetworkManager
                 role = (int)localJoinRole
             });
         }
+        // 탐색 단계 -> 방 상태 확인 요청
         else
         {
             NetworkClient.Send(new RoomProbeRequestMessage());
@@ -419,28 +424,34 @@ public class CustomNetworkManager : NetworkManager
 
     public override void OnClientDisconnect()
     {
+        // 탐색 실패 여부
         bool wasProbing = isSearchingServer && !joinApproved && !isLeavingManually && !isJoiningFinalRoom;
+        // 최종 입장 실패 여부
         bool finalJoinFailed = isSearchingServer && !joinApproved && !isLeavingManually && isJoiningFinalRoom;
 
         base.OnClientDisconnect();
 
+        // 다음 포트 탐색 실행
         if (wasProbing)
         {
             ProbeNextPort();
             return;
         }
 
+        // 최종 입장 실패 -> 취소
         if (finalJoinFailed)
         {
             Debug.LogWarning("[CustomNetworkManager] 최종 방 입장에 실패했습니다.");
         }
 
+        // 사용자 -> 직접 취소
         if (isLeavingManually)
         {
             ResetClientSearchState();
             return;
         }
 
+        // 최종 승인x -> 탐색 종료x
         if (!joinApproved)
         {
             UIManager.Instance?.ShowLoading(false);
@@ -448,6 +459,7 @@ public class CustomNetworkManager : NetworkManager
         }
     }
 
+    // 거부 메시지 수신 시 적용 메소드
     private void OnJoinDenied(JoinDeniedMessage msg)
     {
         Debug.LogWarning($"[CustomNetworkManager] 입장 거부: {msg.reason}");
@@ -463,6 +475,7 @@ public class CustomNetworkManager : NetworkManager
         }
     }
 
+    // 승인 메시지 수신 시 적용 메소드
     private void OnJoinAccepted(JoinAcceptedMessage msg)
     {
         joinApproved = true;
@@ -487,6 +500,7 @@ public class CustomNetworkManager : NetworkManager
 
     #region Server Request Handlers
 
+    // 탐색 요청 수신 시 적용 메소드
     private void OnReceiveRoomProbeRequest(NetworkConnectionToClient conn, RoomProbeRequestMessage msg)
     {
         conn.Send(new RoomProbeResponseMessage
@@ -497,13 +511,17 @@ public class CustomNetworkManager : NetworkManager
             isFull = IsRoomFull
         });
 
+        // 일정시간 연결 후 끊기
         StartCoroutine(DisconnectNextFrame(conn));
     }
 
+    // 최종 접속 요청 수신 시 적용 메소드
     private void OnReceiveJoinRequest(NetworkConnectionToClient conn, JoinRequestMessage msg)
     {
-        JoinRole requestedRole = (JoinRole)msg.role;
-
+        // 역할 복원
+        JoinRole requestedRole = (JoinRole)msg.role;  
+        
+        // 중복 플레이어 확인
         if (conn.identity != null)
         {
             conn.Send(new JoinDeniedMessage { reason = "이미 플레이어가 생성된 연결입니다." });
@@ -511,6 +529,7 @@ public class CustomNetworkManager : NetworkManager
             return;
         }
 
+        // 입장 가능 여부 확인
         if (!CanAcceptRole(requestedRole, out string denyReason))
         {
             conn.Send(new JoinDeniedMessage { reason = denyReason });
@@ -518,6 +537,7 @@ public class CustomNetworkManager : NetworkManager
             return;
         }
 
+        // 실제 플레이어 생성 시도
         if (!TryCreatePlayer(conn, requestedRole, out string createFailReason))
         {
             conn.Send(new JoinDeniedMessage { reason = createFailReason });
@@ -525,6 +545,7 @@ public class CustomNetworkManager : NetworkManager
             return;
         }
 
+        // 역할 등록 및 접속 승인 메세지 전송
         joinedRoles[conn.connectionId] = requestedRole;
 
         conn.Send(new JoinAcceptedMessage
@@ -534,6 +555,7 @@ public class CustomNetworkManager : NetworkManager
         });
     }
 
+    // 입장 가능 여부 반환 메소드
     private bool CanAcceptRole(JoinRole role, out string reason)
     {
         reason = string.Empty;
@@ -565,6 +587,7 @@ public class CustomNetworkManager : NetworkManager
         return true;
     }
 
+    // 실제 플레이어 생성 시도 메소드
     private bool TryCreatePlayer(NetworkConnectionToClient conn, JoinRole role, out string reason)
     {
         reason = string.Empty;
