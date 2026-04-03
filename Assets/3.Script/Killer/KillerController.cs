@@ -11,7 +11,7 @@ public class KillerController : MonoBehaviour
 
     [Header("Lunge & Penalty Settings")]
     public float maxLungeDuration = 1.2f;        // 최대 런지 시간
-    public float hitFailPenalty = 2.0f;      // 허공 휘두름 시 (누른 시간 * 배율) 페널티
+    public float hitFailPenalty = 2.0f;      // 허공 휘두름 시 배율 페널티
     public float hitSuccessPenalty = 2.5f;       // 생존자 타격 시 고정 후딜레이
     public float wallHitPenalty = 3.0f;          // 벽 충돌 시 고정 후딜레이
 
@@ -22,8 +22,9 @@ public class KillerController : MonoBehaviour
     public LayerMask obstacleLayer;     // 벽/구조물 레이어
 
     [Header("Camera Stabilization")]
-    public Transform cameraTarget; // 살인마 머리 쪽 근처의 빈 오브젝트 또는 특정 뼈
-    public float followSpeed = 15f; // 카메라가 머리를 따라가는 부드러움 정도
+    public Transform killerCamera;      // 카메라 오브젝트
+    public Transform cameraTarget;      // [중요] 루트의 자식인 '고정된' 눈높이 빈 오브젝트
+    public float followSpeed = 25f;     // 추적 속도 (높을수록 즉각적)
 
     private CharacterController controller;
     private float cameraPitch = 0f;
@@ -37,50 +38,52 @@ public class KillerController : MonoBehaviour
     private float currentLungeTime = 0f;
     private float currentPenaltyTime = 0f;
 
+    // 자식 오브젝트의 애니메이터 참조
     private Animator animator;
-
-    public Transform killerCamera;
 
     void Awake()
     {
         controller = GetComponent<CharacterController>();
-        animator = GetComponent<Animator>();
+
+        // [수정] 애니메이터가 자식 오브젝트(모델)에 있으므로 GetComponentInChildren 사용
+        animator = GetComponentInChildren<Animator>();
+
+        if (animator != null)
+            Debug.Log($"애니메이터 탐색 성공: {animator.gameObject.name}");
+        else
+            Debug.LogError("자식 오브젝트에서 애니메이터를 찾지 못했습니다!");
     }
 
     void Update()
     {
         if (TestMng.inputSys == null) return;
 
-        // 1. 입력 값 업데이트
         moveInput = TestMng.inputSys.Killer.Move.ReadValue<Vector2>();
         lookInput = TestMng.inputSys.Killer.Look.ReadValue<Vector2>();
 
-        // 2. 공격 로직 처리
         HandleLungeInput();
         HandleRecoveryTimer();
 
-        // 3. 이동 및 회전 처리
         HandleMovement();
         HandleLook();
 
-        UpdateAnimationSpeed();
+        UpdateAnimationParameters();
     }
 
-    private void UpdateAnimationSpeed()
+    private void UpdateAnimationParameters()
     {
         if (animator == null) return;
 
-        float moveInputMagnitude = moveInput.sqrMagnitude;
-
-        animator.SetFloat("Speed", moveInputMagnitude);
+        // 이동 입력 벡터 크기 전달 (Idle <-> Walk)
+        animator.SetFloat("Speed", moveInput.magnitude);
+        // 런지 상태 전달 (Walk <-> Run)
         animator.SetBool("isLunging", isLunging);
     }
 
     private void HandleLungeInput()
     {
-        if (isRecovering) return;
+        if (isRecovering || AnimationPlayCheck("WeaponSwing")) return;
 
-        // 공격 지속 (버튼 유지)
         if (TestMng.inputSys.Killer.Attack.IsPressed())
         {
             if (!isLunging) StartLunge();
@@ -88,16 +91,21 @@ public class KillerController : MonoBehaviour
             currentLungeTime += Time.deltaTime;
             currentLungeTime = Mathf.Clamp(currentLungeTime, 0.1f, maxLungeDuration);
 
-            // 돌진 중 실시간 판정 체크
             CheckHitDetection();
 
             if (currentLungeTime >= maxLungeDuration || hasHitTarget) EndLunge();
         }
-        // 버튼 뗌 (공격 종료)
         else if (isLunging)
         {
             EndLunge();
         }
+    }
+
+    private bool AnimationPlayCheck(string stateName)
+    {
+        if (animator == null) return false;
+        AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+        return stateInfo.IsName(stateName) && stateInfo.normalizedTime < 1.0f;
     }
 
     private void HandleRecoveryTimer()
@@ -105,10 +113,7 @@ public class KillerController : MonoBehaviour
         if (isRecovering)
         {
             currentPenaltyTime -= Time.deltaTime;
-            if (currentPenaltyTime <= 0)
-            {
-                isRecovering = false;
-            }
+            if (currentPenaltyTime <= 0) isRecovering = false;
         }
     }
 
@@ -118,22 +123,18 @@ public class KillerController : MonoBehaviour
         hasHitTarget = false;
         currentLungeTime = 0f;
         Debug.Log("런지 시작!");
-
-        //if (animator != null) animator.SetTrigger("Attack");
     }
 
     private void CheckHitDetection()
     {
         if (hasHitTarget) return;
 
-        // 1. 벽/장애물 체크
         if (Physics.CheckSphere(attackPoint.position, attackRadius * 0.5f, obstacleLayer))
         {
             OnWallHit();
             return;
         }
 
-        // 2. 생존자 체크
         Collider[] hitSurvivors = Physics.OverlapSphere(attackPoint.position, attackRadius, survivorLayer);
         if (hitSurvivors.Length > 0)
         {
@@ -145,14 +146,14 @@ public class KillerController : MonoBehaviour
     {
         hasHitTarget = true;
         currentPenaltyTime = hitSuccessPenalty;
-        Debug.Log($"{survivor.name} 타격 성공! 페널티: {hitSuccessPenalty}s");
+        Debug.Log($"{survivor.name} 타격 성공!");
     }
 
     private void OnWallHit()
     {
         hasHitTarget = true;
         currentPenaltyTime = wallHitPenalty;
-        Debug.Log($"벽 충돌! 페널티: {wallHitPenalty}s");
+        Debug.Log("벽 충돌!");
     }
 
     private void EndLunge()
@@ -160,61 +161,47 @@ public class KillerController : MonoBehaviour
         isLunging = false;
         isRecovering = true;
 
-        // 아무것도 맞추지 못했을 때만 누른 시간에 비례하여 페널티 부여
+        // 런지가 끝날 때 무기를 휘두르는 애니메이션 트리거
         if (animator != null) animator.SetTrigger("Attack");
 
         if (!hasHitTarget)
         {
             currentPenaltyTime = currentLungeTime * hitFailPenalty;
-            Debug.Log($"헛손질! 후딜레이: {currentPenaltyTime}초");
+            Debug.Log($"헛손질! 페널티: {currentPenaltyTime}초");
         }
     }
 
     private void HandleMovement()
     {
+        if (AnimationPlayCheck("WeaponSwing")) return;
+
         float finalSpeed = moveSpeed;
 
-        // 상태에 따른 속도 변화 적용
         if (isLunging) finalSpeed *= lungeSpeed;
         else if (isRecovering) finalSpeed *= penaltySpeed;
 
+        // 최상위 루트 이동 (자식인 카메라와 모델은 자동으로 따라옴)
         Vector3 move = transform.right * moveInput.x + transform.forward * moveInput.y;
         controller.Move(move * finalSpeed * Time.deltaTime);
     }
 
-    //private void HandleLook()
-    //{
-    //    // 런지 중에는 회전 감도를 낮추고 싶다면 여기서 조절 가능합니다.
-    //    float currentSensitivity = lookSensitivity;
-    //    if (isLunging) currentSensitivity *= 0.5f;
-
-    //    transform.Rotate(Vector3.up * lookInput.x * currentSensitivity);
-
-    //    cameraPitch -= lookInput.y * currentSensitivity;
-    //    cameraPitch = Mathf.Clamp(cameraPitch, -80f, 80f);
-    //    killerCamera.localRotation = Quaternion.Euler(cameraPitch, 0, 0);
-    //}
-
     private void HandleLook()
     {
-        // 1. 몸체 회전 (좌우)
+        // 1. 최상위 루트 좌우 회전
         transform.Rotate(Vector3.up * lookInput.x * lookSensitivity);
 
-        // 2. 카메라 상하 회전 값 계산
+        // 2. 카메라 상하 회전
         cameraPitch -= lookInput.y * lookSensitivity;
         cameraPitch = Mathf.Clamp(cameraPitch, -80f, 80f);
-
-        // 3. 카메라의 회전은 애니메이션의 영향을 받지 않고 마우스 입력으로만 결정!
         killerCamera.localRotation = Quaternion.Euler(cameraPitch, 0, 0);
 
-        // 4. [중요] 카메라의 위치를 머리 타겟 위치로 부드럽게 이동 (회전은 무시)
+        // 3. 카메라 위치 고정 (애니메이션에 영향받지 않는 target 위치 추적)
         if (cameraTarget != null)
         {
             killerCamera.position = Vector3.Lerp(killerCamera.position, cameraTarget.position, Time.deltaTime * followSpeed);
         }
     }
 
-    // 판정 범위 시각화
     private void OnDrawGizmosSelected()
     {
         if (attackPoint == null) return;
