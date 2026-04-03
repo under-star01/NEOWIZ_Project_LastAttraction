@@ -1,31 +1,42 @@
+using Mirror;
 using UnityEngine;
 
-public class EvidencePoint : MonoBehaviour, IInteractable
+public class EvidencePoint : NetworkBehaviour, IInteractable
 {
-    // 이 오브젝트는 Hold 타입 상호작용
     public InteractType InteractType => InteractType.Hold;
 
     [Header("조사 설정")]
-    [SerializeField] private float interactTime = 10f; // 조사 완료까지 걸리는 시간
-    [SerializeField] private ProgressUI progressUI;    // 진행도 UI
+    [SerializeField] private float interactTime = 10f;
+    [SerializeField] private ProgressUI progressUI;
 
-    private EvidenceZone zone;         // 어떤 구역에 속하는지
-    private bool isRealEvidence;       // 진짜 증거인지
-    private bool isCompleted;          // 이미 조사 끝났는지
-    private bool isInteracting;        // 현재 조사 중인지
-    private float progress;            // 현재 조사 진행 시간
+    private EvidenceZone zone;
 
-    private SurvivorInteractor playerInteractor; // 현재 상호작용 중인 플레이어
-    private SurvivorMove playerMove;             // 이동 잠금용 참조
+    [SyncVar]
+    private bool isRealEvidence;
 
-    // EvidenceZone이 자기 자신을 등록
+    [SyncVar(hook = nameof(OnCompletedChanged))]
+    private bool isCompleted;
+
+    [SyncVar]
+    private bool isInteracting;
+
+    [SyncVar]
+    private float progress;
+
+    // 현재 조사 중인 플레이어
+    [SyncVar]
+    private uint currentInteractorNetId;
+
+    private SurvivorInteractor localInteractor;
+    private SurvivorMove localMove;
+
     public void SetZone(EvidenceZone evidenceZone)
     {
         zone = evidenceZone;
     }
 
-    // EvidenceZone이 진짜/가짜 여부 지정
-    public void SetIsRealEvidence(bool value)
+    [Server]
+    public void SetIsRealEvidenceServer(bool value)
     {
         isRealEvidence = value;
     }
@@ -36,79 +47,136 @@ public class EvidencePoint : MonoBehaviour, IInteractable
             progressUI = FindFirstObjectByType<ProgressUI>();
     }
 
-    // 조사 시작
+    private void Update()
+    {
+        if (isServer)
+        {
+            ServerUpdateInteract();
+        }
+
+        UpdateLocalUI();
+    }
+
+    // 로컬 플레이어가 조사 시작 요청
     public void BeginInteract()
     {
         if (isCompleted)
             return;
 
-        isInteracting = true;
+        if (localInteractor == null)
+            return;
 
-        // 조사 시작할 때 플레이어를 증거 쪽으로 돌림
-        FaceToEvidence();
+        FaceToEvidenceLocal();
+        LockMovementLocal(true);
+        SetSearchingLocal(true);
 
-        // 이동만 막음
-        // SurvivorMove에서 Look()는 계속 돌기 때문에 마우스 회전은 가능
-        LockMovement(true);
-
-        // 써칭 애니메이션 시작
-        SetSearching(true);
-
-        progressUI?.Show();
-        progressUI?.SetProgress(progress / interactTime);
-
-        Debug.Log($"{name} 조사 시작");
+        CmdBeginInteract();
     }
 
-    // 조사 중단
+    // 로컬 플레이어가 조사 중단 요청
     public void EndInteract()
+    {
+        if (localInteractor == null)
+            return;
+
+        LockMovementLocal(false);
+        SetSearchingLocal(false);
+
+        CmdEndInteract();
+    }
+
+    [Command(requiresAuthority = false)]
+    private void CmdBeginInteract(NetworkConnectionToClient sender = null)
     {
         if (isCompleted)
             return;
 
-        isInteracting = false;
-        progress = 0f; // 중간 취소 시 처음부터 다시
+        if (sender == null || sender.identity == null)
+            return;
 
-        LockMovement(false);
+        SurvivorInteractor interactor = sender.identity.GetComponent<SurvivorInteractor>();
+        if (interactor == null)
+            return;
 
-        // 써칭 애니메이션 종료
-        SetSearching(false);
+        SurvivorMove move = sender.identity.GetComponent<SurvivorMove>();
+        if (move == null)
+            return;
 
-        progressUI?.Hide();
+        // 이미 다른 사람이 조사 중이면 막기
+        if (isInteracting && currentInteractorNetId != sender.identity.netId)
+            return;
 
-        Debug.Log($"{name} 조사 중단");
+        // 범위 체크
+        if (!CanInteractorUseThis(interactor.transform))
+            return;
+
+        isInteracting = true;
+        currentInteractorNetId = sender.identity.netId;
     }
 
-    private void Update()
+    [Command(requiresAuthority = false)]
+    private void CmdEndInteract(NetworkConnectionToClient sender = null)
+    {
+        if (sender == null || sender.identity == null)
+            return;
+
+        if (!isInteracting)
+            return;
+
+        if (currentInteractorNetId != sender.identity.netId)
+            return;
+
+        isInteracting = false;
+        currentInteractorNetId = 0;
+    }
+
+    [Server]
+    private void ServerUpdateInteract()
     {
         if (!isInteracting || isCompleted)
             return;
 
-        progress += Time.deltaTime;
+        if (!NetworkServer.spawned.TryGetValue(currentInteractorNetId, out NetworkIdentity identity))
+        {
+            StopServerInteract();
+            return;
+        }
 
-        float normalized = progress / interactTime;
-        progressUI?.SetProgress(normalized);
+        SurvivorInteractor interactor = identity.GetComponent<SurvivorInteractor>();
+        if (interactor == null)
+        {
+            StopServerInteract();
+            return;
+        }
+
+        if (!CanInteractorUseThis(interactor.transform))
+        {
+            StopServerInteract();
+            return;
+        }
+
+        progress += Time.deltaTime;
 
         if (progress >= interactTime)
         {
-            Complete();
+            CompleteServer();
         }
     }
 
-    // 조사 완료 처리
-    private void Complete()
+    [Server]
+    private void StopServerInteract()
+    {
+        isInteracting = false;
+        currentInteractorNetId = 0;
+    }
+
+    [Server]
+    private void CompleteServer()
     {
         isCompleted = true;
         isInteracting = false;
+        currentInteractorNetId = 0;
         progress = interactTime;
-
-        LockMovement(false);
-
-        // 써칭 애니메이션 종료
-        SetSearching(false);
-
-        progressUI?.SetProgress(1f);
-        progressUI?.Hide();
 
         if (isRealEvidence)
         {
@@ -120,61 +188,125 @@ public class EvidencePoint : MonoBehaviour, IInteractable
             Debug.Log($"{name} : 가짜 포인트");
         }
 
-        // 한 번 조사 끝난 포인트는 비활성화
+        RpcForceStopLocalEffects();
         gameObject.SetActive(false);
     }
 
-    // 플레이어가 증거 방향을 보도록 맞춤
-    private void FaceToEvidence()
+    [ClientRpc]
+    private void RpcForceStopLocalEffects()
     {
-        if (playerMove == null)
+        if (localMove != null)
+        {
+            localMove.SetMoveLock(false);
+            localMove.SetSearching(false);
+        }
+
+        if (progressUI != null)
+            progressUI.Hide();
+    }
+
+    private void OnCompletedChanged(bool oldValue, bool newValue)
+    {
+        if (!newValue)
             return;
 
-        Vector3 lookDir = transform.position - playerMove.transform.position;
+        if (progressUI != null)
+            progressUI.Hide();
+    }
+
+    private void UpdateLocalUI()
+    {
+        if (progressUI == null)
+            return;
+
+        if (localInteractor == null)
+            return;
+
+        bool isMyInteract =
+            isInteracting &&
+            localInteractor.netId == currentInteractorNetId &&
+            !isCompleted;
+
+        if (isMyInteract)
+        {
+            progressUI.Show();
+            progressUI.SetProgress(progress / interactTime);
+        }
+        else
+        {
+            progressUI.Hide();
+        }
+    }
+
+    private bool CanInteractorUseThis(Transform interactorTransform)
+    {
+        if (interactorTransform == null)
+            return false;
+
+        Collider myCol = GetComponent<Collider>();
+        if (myCol == null)
+            myCol = GetComponentInChildren<Collider>();
+
+        if (myCol == null)
+            return false;
+
+        Vector3 closest = myCol.ClosestPoint(interactorTransform.position);
+        float sqrDist = (closest - interactorTransform.position).sqrMagnitude;
+
+        return sqrDist <= 4f;
+    }
+
+    private void FaceToEvidenceLocal()
+    {
+        if (localMove == null)
+            return;
+
+        Vector3 lookDir = transform.position - localMove.transform.position;
         lookDir.y = 0f;
 
         if (lookDir.sqrMagnitude <= 0.001f)
             return;
 
-        playerMove.FaceDirection(lookDir.normalized);
+        localMove.FaceDirection(lookDir.normalized);
     }
 
-    // 이동 잠금/해제
-    private void LockMovement(bool value)
+    private void LockMovementLocal(bool value)
     {
-        if (playerMove != null)
-            playerMove.SetMoveLock(value);
+        if (localMove != null)
+            localMove.SetMoveLock(value);
     }
 
-    // 써칭 애니메이션 on/off
-    private void SetSearching(bool value)
+    private void SetSearchingLocal(bool value)
     {
-        if (playerMove != null)
-            playerMove.SetSearching(value);
+        if (localMove != null)
+            localMove.SetSearching(value);
     }
 
-    // 플레이어가 범위 안에 들어오면 상호작용 가능 대상으로 등록
     private void OnTriggerEnter(Collider other)
     {
         if (!other.CompareTag("Survivor"))
             return;
 
-        playerInteractor = other.GetComponent<SurvivorInteractor>();
-        if (playerInteractor == null)
-            playerInteractor = other.GetComponentInParent<SurvivorInteractor>();
+        SurvivorInteractor interactor = other.GetComponent<SurvivorInteractor>();
+        if (interactor == null)
+            interactor = other.GetComponentInParent<SurvivorInteractor>();
 
-        if (playerInteractor != null)
-        {
-            playerMove = playerInteractor.GetComponent<SurvivorMove>();
-            if (playerMove == null)
-                playerMove = playerInteractor.GetComponentInParent<SurvivorMove>();
+        if (interactor == null)
+            return;
 
-            playerInteractor.SetInteractable(this);
-            Debug.Log($"{name} 범위 진입");
-        }
+        if (!interactor.isLocalPlayer)
+            return;
+
+        localInteractor = interactor;
+
+        localMove = interactor.GetComponent<SurvivorMove>();
+        if (localMove == null)
+            localMove = interactor.GetComponentInParent<SurvivorMove>();
+
+        interactor.SetInteractable(this);
+        Debug.Log($"{name} 범위 진입");
     }
 
-    // 범위를 벗어나면 상호작용 해제
     private void OnTriggerExit(Collider other)
     {
         if (!other.CompareTag("Survivor"))
@@ -184,19 +316,25 @@ public class EvidencePoint : MonoBehaviour, IInteractable
         if (interactor == null)
             interactor = other.GetComponentInParent<SurvivorInteractor>();
 
-        if (interactor != null)
+        if (interactor == null)
+            return;
+
+        if (!interactor.isLocalPlayer)
+            return;
+
+        interactor.ClearInteractable(this);
+
+        if (localInteractor == interactor)
         {
-            interactor.ClearInteractable(this);
-            Debug.Log($"{name} 범위 이탈");
+            LockMovementLocal(false);
+            SetSearchingLocal(false);
+
+            CmdEndInteract();
+
+            localInteractor = null;
+            localMove = null;
         }
 
-        if (playerInteractor == interactor)
-        {
-            LockMovement(false);
-            SetSearching(false);
-
-            playerInteractor = null;
-            playerMove = null;
-        }
+        Debug.Log($"{name} 범위 이탈");
     }
 }
