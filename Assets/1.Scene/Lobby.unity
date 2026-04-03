@@ -1349,6 +1349,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LobbySceneBinder
   killerLobbyCamera: {fileID: 900829951}
   survivorLobbyCamera: {fileID: 1438959019}
+  progressUI: {fileID: 1556038587}
   livePriority: 20
   idlePriority: 10
 --- !u!4 &591203397
