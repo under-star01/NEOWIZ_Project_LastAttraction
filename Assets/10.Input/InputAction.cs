@@ -299,6 +299,24 @@ public partial class @InputSystem: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Interact1"",
+                    ""type"": ""Button"",
+                    ""id"": ""1b022835-106f-4e4a-bb15-78842d76b4c6"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Interact2"",
+                    ""type"": ""Button"",
+                    ""id"": ""504c6d70-b43c-4844-b179-d365c997a6de"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -389,6 +407,28 @@ public partial class @InputSystem: IInputActionCollection2, IDisposable
                     ""action"": ""TrapMode"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""f8a1e7db-f5d4-4efc-b022-12bd606ab578"",
+                    ""path"": ""<Keyboard>/space"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Interact1"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""54e25111-4022-4dbe-b895-4efb8950d386"",
+                    ""path"": ""<Keyboard>/e"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Interact2"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -426,6 +466,8 @@ public partial class @InputSystem: IInputActionCollection2, IDisposable
         m_Killer_Look = m_Killer.FindAction("Look", throwIfNotFound: true);
         m_Killer_Attack = m_Killer.FindAction("Attack", throwIfNotFound: true);
         m_Killer_TrapMode = m_Killer.FindAction("TrapMode", throwIfNotFound: true);
+        m_Killer_Interact1 = m_Killer.FindAction("Interact1", throwIfNotFound: true);
+        m_Killer_Interact2 = m_Killer.FindAction("Interact2", throwIfNotFound: true);
     }
 
     ~@InputSystem()
@@ -662,6 +704,8 @@ public partial class @InputSystem: IInputActionCollection2, IDisposable
     private readonly InputAction m_Killer_Look;
     private readonly InputAction m_Killer_Attack;
     private readonly InputAction m_Killer_TrapMode;
+    private readonly InputAction m_Killer_Interact1;
+    private readonly InputAction m_Killer_Interact2;
     /// <summary>
     /// Provides access to input actions defined in input action map "Killer".
     /// </summary>
@@ -689,6 +733,14 @@ public partial class @InputSystem: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "Killer/TrapMode".
         /// </summary>
         public InputAction @TrapMode => m_Wrapper.m_Killer_TrapMode;
+        /// <summary>
+        /// Provides access to the underlying input action "Killer/Interact1".
+        /// </summary>
+        public InputAction @Interact1 => m_Wrapper.m_Killer_Interact1;
+        /// <summary>
+        /// Provides access to the underlying input action "Killer/Interact2".
+        /// </summary>
+        public InputAction @Interact2 => m_Wrapper.m_Killer_Interact2;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -727,6 +779,12 @@ public partial class @InputSystem: IInputActionCollection2, IDisposable
             @TrapMode.started += instance.OnTrapMode;
             @TrapMode.performed += instance.OnTrapMode;
             @TrapMode.canceled += instance.OnTrapMode;
+            @Interact1.started += instance.OnInteract1;
+            @Interact1.performed += instance.OnInteract1;
+            @Interact1.canceled += instance.OnInteract1;
+            @Interact2.started += instance.OnInteract2;
+            @Interact2.performed += instance.OnInteract2;
+            @Interact2.canceled += instance.OnInteract2;
         }
 
         /// <summary>
@@ -750,6 +808,12 @@ public partial class @InputSystem: IInputActionCollection2, IDisposable
             @TrapMode.started -= instance.OnTrapMode;
             @TrapMode.performed -= instance.OnTrapMode;
             @TrapMode.canceled -= instance.OnTrapMode;
+            @Interact1.started -= instance.OnInteract1;
+            @Interact1.performed -= instance.OnInteract1;
+            @Interact1.canceled -= instance.OnInteract1;
+            @Interact2.started -= instance.OnInteract2;
+            @Interact2.performed -= instance.OnInteract2;
+            @Interact2.canceled -= instance.OnInteract2;
         }
 
         /// <summary>
@@ -881,5 +945,19 @@ public partial class @InputSystem: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnTrapMode(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "Interact1" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnInteract1(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "Interact2" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnInteract2(InputAction.CallbackContext context);
     }
 }
