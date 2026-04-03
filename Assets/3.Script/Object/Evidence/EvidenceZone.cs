@@ -1,16 +1,18 @@
 using Mirror;
 using UnityEngine;
 
-public class EvidenceZone : NetworkBehaviour
+public class EvidenceZone : MonoBehaviour
 {
     [SerializeField] private EvidencePoint[] points;
 
     // 이 구역에서 진짜 증거 1개
     private EvidencePoint realEvidencePoint;
 
-    public override void OnStartServer()
+    private void Start()
     {
-        base.OnStartServer();
+        // 서버에서만 진짜 증거 선택
+        if (!NetworkServer.active)
+            return;
 
         if (points == null || points.Length == 0)
             points = GetComponentsInChildren<EvidencePoint>(true);
@@ -19,7 +21,6 @@ public class EvidenceZone : NetworkBehaviour
     }
 
     // 서버만 여러 포인트 중 하나를 랜덤으로 진짜 증거로 선택
-    [Server]
     private void SelectRandomEvidenceServer()
     {
         if (points == null || points.Length == 0)
@@ -40,14 +41,18 @@ public class EvidenceZone : NetworkBehaviour
     }
 
     // 진짜 증거가 발견됐을 때 호출됨
-    [Server]
     public void OnRealEvidenceFound(EvidencePoint point)
     {
+        // 서버에서만 처리
+        if (!NetworkServer.active)
+            return;
+
         Debug.Log($"{name} : 진짜 증거 발견 완료 - {point.name}");
 
-        // 나중에 여기서
+        // 나중에 여기서:
         // 총 증거 개수 증가
         // 문 열기
-        // 추가하면 됨
+        // 목표 진행도 갱신
+        // 같은 처리 추가 
     }
 }
