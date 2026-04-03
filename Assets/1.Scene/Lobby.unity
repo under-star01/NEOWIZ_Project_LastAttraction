@@ -159,10 +159,22 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 402319338019571725, guid: 63c20eccf90c6844aadab5e4b9b03a0a, type: 3}
+      propertyPath: progressUI
+      value: 
+      objectReference: {fileID: 1556038587}
     - target: {fileID: 3325040267953218945, guid: 63c20eccf90c6844aadab5e4b9b03a0a, type: 3}
       propertyPath: m_Name
       value: EvidenceZone_A
       objectReference: {fileID: 0}
+    - target: {fileID: 3495531223815012618, guid: 63c20eccf90c6844aadab5e4b9b03a0a, type: 3}
+      propertyPath: progressUI
+      value: 
+      objectReference: {fileID: 1556038587}
+    - target: {fileID: 3879303239833086249, guid: 63c20eccf90c6844aadab5e4b9b03a0a, type: 3}
+      propertyPath: progressUI
+      value: 
+      objectReference: {fileID: 1556038587}
     - target: {fileID: 5869253520579511457, guid: 63c20eccf90c6844aadab5e4b9b03a0a, type: 3}
       propertyPath: sceneId
       value: 2918942758
