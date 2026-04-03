@@ -7,6 +7,7 @@ public class SurvivorMove : NetworkBehaviour
     [SerializeField] private Transform cameraYawRoot;   // 좌우 회전용 루트
     [SerializeField] private Transform cameraPitchRoot; // 상하 회전용 루트
     [SerializeField] private Camera playerCamera;       // 로컬 플레이어 카메라
+    [SerializeField] private AudioListener playerListener; // 오디오 리스너
     [SerializeField] private Transform modelRoot;       // 캐릭터 모델 회전용
     [SerializeField] private Animator animator;         // 애니메이터
 
@@ -124,6 +125,9 @@ public class SurvivorMove : NetworkBehaviour
 
         if (playerCamera != null)
             playerCamera.enabled = false;
+
+        if (playerListener != null)
+            playerListener.enabled = false;
     }
 
     public override void OnStartLocalPlayer()
@@ -132,6 +136,9 @@ public class SurvivorMove : NetworkBehaviour
 
         if (playerCamera != null)
             playerCamera.enabled = true;
+
+        if (playerListener != null)
+            playerListener.enabled = true;
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
@@ -145,6 +152,9 @@ public class SurvivorMove : NetworkBehaviour
         {
             if (playerCamera != null)
                 playerCamera.enabled = false;
+
+            if (playerListener != null)
+                playerListener.enabled = false;
         }
     }
 
@@ -425,7 +435,7 @@ public class SurvivorMove : NetworkBehaviour
         if (animator == null)
             return;
 
-        animator.SetFloat("MoveSpeed", targetMoveSpeed);
+        animator.SetFloat("MoveSpeed", targetMoveSpeed, 0.1f, Time.deltaTime);
         animator.SetBool("IsCrouching", isCrouching);
         animator.SetBool("IsDowned", isDowned);
     }
