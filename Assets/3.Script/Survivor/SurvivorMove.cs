@@ -34,19 +34,26 @@ public class SurvivorMove : NetworkBehaviour
     private SurvivorInteractor interactor;
     private SurvivorState state;
 
-    // 로컬 카메라용
+    // 로컬 카메라 회전용
     private float localYaw;
     private float localPitch;
 
-    // 서버 이동용
+    // 서버 실제 이동용
     private float yVelocity;
     private bool isMoveLocked;
 
-    // 원격 플레이어가 바라보는 방향 표시용
+    // 클라 -> 서버로 보낸 최신 입력 저장
+    private Vector2 serverMoveInput;
+    private bool serverWantsRun;
+    private bool serverWantsCrouch;
+    private float serverYaw;
+    private float serverPitch;
+
+    // 원격 표시용 동기화 값
     [SyncVar] private float syncedYaw;
     [SyncVar] private float syncedPitch;
+    [SyncVar] private float syncedModelYaw;
 
-    // 서버가 계산한 상태를 원격에게도 반영
     [SyncVar] private float syncedMoveSpeed;
     [SyncVar] private bool syncedIsCrouching;
     [SyncVar] private bool syncedIsDowned;
@@ -96,7 +103,10 @@ public class SurvivorMove : NetworkBehaviour
     private void ApplyFaceDirection(Vector3 dir)
     {
         if (modelRoot != null)
+        {
             modelRoot.rotation = Quaternion.LookRotation(dir);
+            syncedModelYaw = modelRoot.eulerAngles.y;
+        }
     }
 
     private void Awake()
@@ -111,6 +121,9 @@ public class SurvivorMove : NetworkBehaviour
 
         if (animator != null)
             animator.applyRootMotion = false;
+
+        if (playerCamera != null)
+            playerCamera.enabled = false;
     }
 
     public override void OnStartLocalPlayer()
@@ -119,10 +132,6 @@ public class SurvivorMove : NetworkBehaviour
 
         if (playerCamera != null)
             playerCamera.enabled = true;
-
-        AudioListener listener = GetComponentInChildren<AudioListener>();
-        if (listener != null)
-            listener.enabled = true;
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
@@ -136,10 +145,6 @@ public class SurvivorMove : NetworkBehaviour
         {
             if (playerCamera != null)
                 playerCamera.enabled = false;
-
-            AudioListener listener = GetComponentInChildren<AudioListener>();
-            if (listener != null)
-                listener.enabled = false;
         }
     }
 
@@ -148,13 +153,20 @@ public class SurvivorMove : NetworkBehaviour
         if (isLocalPlayer)
         {
             UpdateLocalLook();
-            SendMoveInputToServer();
+            SendInputToServer();
             ApplyLocalCamera();
+            ApplyModelRotation();
         }
         else
         {
             ApplyRemoteLook();
             ApplyRemoteAnimator();
+            ApplyModelRotation();
+        }
+
+        if (isServer)
+        {
+            ServerTickMovement();
         }
     }
 
@@ -188,6 +200,16 @@ public class SurvivorMove : NetworkBehaviour
             cameraPitchRoot.localRotation = Quaternion.Euler(syncedPitch, 0f, 0f);
     }
 
+    private void ApplyModelRotation()
+    {
+        if (modelRoot == null)
+            return;
+
+        Vector3 euler = modelRoot.eulerAngles;
+        euler.y = syncedModelYaw;
+        modelRoot.eulerAngles = euler;
+    }
+
     private void ApplyRemoteAnimator()
     {
         if (animator == null)
@@ -198,12 +220,12 @@ public class SurvivorMove : NetworkBehaviour
         animator.SetBool("IsDowned", syncedIsDowned);
     }
 
-    private void SendMoveInputToServer()
+    private void SendInputToServer()
     {
         if (input == null)
             return;
 
-        CmdMove(
+        CmdSetMoveInput(
             input.Move,
             input.IsRunning,
             input.IsCrouching,
@@ -213,11 +235,21 @@ public class SurvivorMove : NetworkBehaviour
     }
 
     [Command]
-    private void CmdMove(Vector2 moveInput, bool wantsRun, bool wantsCrouch, float yaw, float pitch)
+    private void CmdSetMoveInput(Vector2 moveInput, bool wantsRun, bool wantsCrouch, float yaw, float pitch)
     {
+        serverMoveInput = moveInput;
+        serverWantsRun = wantsRun;
+        serverWantsCrouch = wantsCrouch;
+        serverYaw = yaw;
+        serverPitch = pitch;
+
         syncedYaw = yaw;
         syncedPitch = pitch;
+    }
 
+    [Server]
+    private void ServerTickMovement()
+    {
         if (controller == null || !controller.enabled)
             return;
 
@@ -233,19 +265,19 @@ public class SurvivorMove : NetworkBehaviour
 
         if (isDowned)
         {
-            CrawlMoveServer(moveInput, yaw);
+            CrawlMoveServer(serverMoveInput, serverYaw);
             return;
         }
 
         bool canCrouch = interactor == null || !interactor.IsInteracting;
-        bool isCrouching = canCrouch && wantsCrouch;
+        bool isCrouching = canCrouch && serverWantsCrouch;
 
         if (isCrouching)
             SetSizeServer(crouchHeight, crouchCenter);
         else
             SetSizeServer(standHeight, standCenter);
 
-        MoveServer(moveInput, wantsRun, isCrouching, yaw);
+        MoveServer(serverMoveInput, serverWantsRun, isCrouching, serverYaw);
     }
 
     [Server]
@@ -330,6 +362,8 @@ public class SurvivorMove : NetworkBehaviour
                 targetRot,
                 turnSpeed * Time.deltaTime
             );
+
+            syncedModelYaw = modelRoot.eulerAngles.y;
         }
 
         float animSpeed = 0f;
@@ -352,6 +386,8 @@ public class SurvivorMove : NetworkBehaviour
             targetRot,
             turnSpeed * Time.deltaTime
         );
+
+        syncedModelYaw = modelRoot.eulerAngles.y;
     }
 
     [Server]
