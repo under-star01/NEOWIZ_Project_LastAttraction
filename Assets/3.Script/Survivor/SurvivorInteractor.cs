@@ -313,7 +313,7 @@ public class SurvivorInteractor : NetworkBehaviour
                 activeInteractable = currentInteractable;
 
                 SetInteractionState(true);
-                activeInteractable.BeginInteract();
+                activeInteractable.BeginInteract(this.gameObject);
             }
         }
         else
@@ -345,7 +345,7 @@ public class SurvivorInteractor : NetworkBehaviour
             return;
 
         if (input.IsInteracting2)
-            currentInteractable.BeginInteract();
+            currentInteractable.BeginInteract(this.gameObject);
     }
 
     // 상호작용 가능 대상 등록
