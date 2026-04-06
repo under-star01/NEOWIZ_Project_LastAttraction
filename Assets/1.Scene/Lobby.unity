@@ -1443,7 +1443,7 @@ MonoBehaviour:
   onlineScene: 
   offlineSceneLoadDelay: 0
   transport: {fileID: 746813350}
-  networkAddress: 54.180.116.157
+  networkAddress: 3.36.62.23
   maxConnections: 5
   disconnectInactiveConnections: 0
   disconnectInactiveTimeout: 60
@@ -3273,9 +3273,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SQLManager
   server: 127.0.0.1
   port: 3306
-  database: lastattraction
+  database: last_attraction_db
   user: understar
-  password: Under7200!
+  password: lastattraction
   testConnectionOnStart: 1
 --- !u!1 &4271583785173468279
 GameObject:
