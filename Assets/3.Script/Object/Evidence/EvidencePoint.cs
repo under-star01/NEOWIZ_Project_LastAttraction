@@ -8,67 +8,60 @@ public class EvidencePoint : NetworkBehaviour, IInteractable
 
     [Header("조사 설정")]
     [SerializeField] private float interactTime = 10f;
-    [SerializeField] private ProgressUI progressUI;
+    [SerializeField] private ProgressUI progressUI; // 현재 로컬 플레이어의 UI를 연결받음
 
     private EvidenceZone zone;
 
-    // 진짜 증거 여부
     [SyncVar]
-    private bool isRealEvidence;
+    private bool isRealEvidence; // 진짜 증거인지
 
-    // 완료 여부
-    // 완료되면 hook이 호출되어 UI 등을 정리할 수 있다.
     [SyncVar(hook = nameof(OnCompletedChanged))]
-    private bool isCompleted;
+    private bool isCompleted; // 완료 여부
 
-    // 현재 조사 중인지
     [SyncVar]
-    private bool isInteracting;
+    private bool isInteracting; // 현재 누군가 조사 중인지
 
-    // 현재 진행도 시간
     [SyncVar]
-    private float progress;
+    private float progress; // 현재 조사 진행 시간
 
-    // 현재 조사 중인 플레이어의 netId
     [SyncVar]
-    private uint currentInteractorNetId;
+    private uint currentInteractorNetId; // 현재 조사 중인 플레이어 netId
 
-    // 로컬 플레이어 쪽 캐시 참조
-    private SurvivorInteractor localInteractor;
-    private SurvivorMove localMove;
+    private SurvivorInteractor localInteractor; // 이 클라이언트 기준 로컬 플레이어
+    private SurvivorMove localMove;             // 로컬 플레이어 이동 제어용
+
+    // 이 로컬 플레이어가 현재 이 증거 범위 안에 있는지 기억
+    // 다른 플레이어가 먼저 조사 중이라 처음엔 등록 실패해도,
+    // 나중에 비면 자동으로 다시 등록되게 하기 위함
+    private bool isLocalInside;
 
     public void SetZone(EvidenceZone evidenceZone)
     {
         zone = evidenceZone;
     }
 
-    // 서버에서만 진짜 증거 여부를 설정
     [Server]
     public void SetIsRealEvidenceServer(bool value)
     {
         isRealEvidence = value;
     }
 
-    private void Awake()
-    {
-        if (progressUI == null)
-            progressUI = FindFirstObjectByType<ProgressUI>();
-    }
-
     private void Update()
     {
         // 실제 진행도 증가는 서버에서만 처리
         if (isServer)
-        {
             ServerUpdateInteract();
-        }
 
-        // UI 표시는 각 클라이언트 로컬에서 처리
+        // 각 클라이언트 로컬 UI 갱신
         UpdateLocalUI();
+
+        // 범위 안 대기 중인 로컬 플레이어가
+        // 다른 사람이 취소했을 때 다시 상호작용 가능해지도록 갱신
+        RefreshLocalAvailability();
     }
 
-    // 로컬 플레이어가 상호작용 시작
-    public void BeginInteract(GameObject actor)
+    // 로컬 플레이어가 조사 시작
+    public void BeginInteract()
     {
         if (isCompleted)
             return;
@@ -76,38 +69,39 @@ public class EvidencePoint : NetworkBehaviour, IInteractable
         if (localInteractor == null)
             return;
 
-        // 시작할 때 증거 방향을 보게 하고
-        // 로컬에서 즉시 이동 잠금 / searching 애니메이션 적용
+        // 이미 다른 사람이 조사 중이면 시작 불가
+        if (IsBusyByOtherLocal())
+            return;
+
+        // 로컬 체감용 처리
         FaceToEvidenceLocal();
         LockMovementLocal(true);
         SetSearchingLocal(true);
 
-        // 서버에 조사 시작 요청
+        // 실제 시작 판정은 서버에 요청
         CmdBeginInteract();
     }
 
-    // 로컬 플레이어가 상호작용 취소
+    // 로컬 플레이어가 조사 종료
     public void EndInteract()
     {
         if (localInteractor == null)
             return;
 
-        // 로컬에서 즉시 이동 잠금 해제 / searching 종료
+        // 로컬 효과 정리
         LockMovementLocal(false);
         SetSearchingLocal(false);
 
-        // UI도 바로 꺼주고 0으로 초기화
         if (progressUI != null)
         {
             progressUI.SetProgress(0f);
             progressUI.Hide();
         }
 
-        // 서버에 조사 중단 요청
+        // 실제 종료는 서버에 요청
         CmdEndInteract();
     }
 
-    // 서버에 조사 시작 요청
     [Command(requiresAuthority = false)]
     private void CmdBeginInteract(NetworkConnectionToClient sender = null)
     {
@@ -121,26 +115,26 @@ public class EvidencePoint : NetworkBehaviour, IInteractable
         if (interactor == null)
             return;
 
-        SurvivorMove move = sender.identity.GetComponent<SurvivorMove>();
-        if (move == null)
+        // SurvivorMove가 없으면 상호작용 불가
+        if (sender.identity.GetComponent<SurvivorMove>() == null)
             return;
 
-        // 이미 다른 사람이 조사 중이면 막음
+        // 이미 다른 사람이 조사 중이면 막기
         if (isInteracting && currentInteractorNetId != sender.identity.netId)
             return;
 
-        // 범위 안에 있는지 서버가 최종 확인
-        if (!CanInteractorUseThis(interactor.transform))
+        // 서버 기준 범위 체크
+        if (!CanInteractorUseThis(sender.identity.transform))
             return;
 
         isInteracting = true;
         currentInteractorNetId = sender.identity.netId;
 
-        // 새로 시작했으니 progress도 0부터 시작
+        // 새로 시작할 때 진행도 초기화
+        // "중간부터 이어서"가 아니라 다시 시작 구조
         progress = 0f;
     }
 
-    // 서버에 조사 중단 요청
     [Command(requiresAuthority = false)]
     private void CmdEndInteract(NetworkConnectionToClient sender = null)
     {
@@ -154,17 +148,14 @@ public class EvidencePoint : NetworkBehaviour, IInteractable
         if (currentInteractorNetId != sender.identity.netId)
             return;
 
-        // 여기서 progress를 0으로 초기화하는 것이 중요
-        // 이게 없으면 다시 잡았을 때 이전 진행도가 남는다.
         isInteracting = false;
         currentInteractorNetId = 0;
         progress = 0f;
 
-        // 취소 시점에 로컬 효과도 확실히 꺼줌
         RpcForceStopLocalEffects();
     }
 
-    // 서버에서 매 프레임 조사 진행
+    // 서버에서 조사 진행
     [Server]
     private void ServerUpdateInteract()
     {
@@ -185,24 +176,20 @@ public class EvidencePoint : NetworkBehaviour, IInteractable
             return;
         }
 
-        // 범위를 벗어나면 자동 취소
-        if (!CanInteractorUseThis(interactor.transform))
+        // 범위 벗어나면 자동 종료
+        if (!CanInteractorUseThis(identity.transform))
         {
             StopServerInteract();
             return;
         }
 
-        // 진행도 증가
         progress += Time.deltaTime;
 
-        // 완료
         if (progress >= interactTime)
-        {
             CompleteServer();
-        }
     }
 
-    // 서버에서 조사 중단 처리
+    // 서버에서 조사 중단
     [Server]
     private void StopServerInteract()
     {
@@ -210,11 +197,10 @@ public class EvidencePoint : NetworkBehaviour, IInteractable
         currentInteractorNetId = 0;
         progress = 0f;
 
-        // 클라 로컬 효과도 정리
         RpcForceStopLocalEffects();
     }
 
-    // 서버에서 조사 완료 처리
+    // 서버에서 조사 완료
     [Server]
     private void CompleteServer()
     {
@@ -233,14 +219,13 @@ public class EvidencePoint : NetworkBehaviour, IInteractable
             Debug.Log($"{name} : 가짜 포인트");
         }
 
-        // 완료 시 로컬 이동 잠금 / 애니메이션 / UI 정리
         RpcForceStopLocalEffects();
 
-        // 완전히 끝난 뒤 비활성화
+        // 완료된 증거는 비활성화
         gameObject.SetActive(false);
     }
 
-    // 모든 클라이언트에서 로컬 효과 강제 종료
+    // 모든 클라이언트에서 로컬 효과 정리
     [ClientRpc]
     private void RpcForceStopLocalEffects()
     {
@@ -257,7 +242,6 @@ public class EvidencePoint : NetworkBehaviour, IInteractable
         }
     }
 
-    // 완료 상태가 바뀌었을 때 UI 정리
     private void OnCompletedChanged(bool oldValue, bool newValue)
     {
         if (!newValue)
@@ -265,9 +249,13 @@ public class EvidencePoint : NetworkBehaviour, IInteractable
 
         if (progressUI != null)
             progressUI.Hide();
+
+        // 완료되면 현재 로컬 플레이어의 후보 목록에서도 제거
+        if (localInteractor != null)
+            localInteractor.ClearInteractable(this);
     }
 
-    // 로컬 플레이어에게만 자기 조사 UI 표시
+    // 현재 로컬 플레이어가 조사 중일 때만 UI 표시
     private void UpdateLocalUI()
     {
         if (progressUI == null)
@@ -276,11 +264,10 @@ public class EvidencePoint : NetworkBehaviour, IInteractable
         if (localInteractor == null)
             return;
 
-        // 내가 현재 조사 중인 플레이어인지 확인
-        bool isMyInteract =
-            isInteracting &&
-            localInteractor.netId == currentInteractorNetId &&
-            !isCompleted;
+        bool isMyInteract = false;
+
+        if (isInteracting && !isCompleted && localInteractor.netId == currentInteractorNetId)
+            isMyInteract = true;
 
         if (isMyInteract)
         {
@@ -291,6 +278,46 @@ public class EvidencePoint : NetworkBehaviour, IInteractable
         {
             progressUI.Hide();
         }
+    }
+
+    // 범위 안에 있는 로컬 플레이어의 상호작용 가능 여부 갱신
+    // 다른 사람이 조사 중일 때 들어와서 등록 실패했더라도
+    // 나중에 비면 자동 등록됨
+    private void RefreshLocalAvailability()
+    {
+        if (!isLocalInside)
+            return;
+
+        if (localInteractor == null)
+            return;
+
+        if (isCompleted)
+        {
+            localInteractor.ClearInteractable(this);
+            return;
+        }
+
+        // 다른 사람이 조사 중이면 현재 로컬 플레이어는 후보에서 제외
+        if (IsBusyByOtherLocal())
+        {
+            localInteractor.ClearInteractable(this);
+            return;
+        }
+
+        // 비어 있거나 내가 조사 중이면 다시 후보 등록
+        localInteractor.SetInteractable(this);
+    }
+
+    // 로컬 기준으로 "다른 사람이 조사 중인지" 확인
+    private bool IsBusyByOtherLocal()
+    {
+        if (!isInteracting)
+            return false;
+
+        if (localInteractor == null)
+            return true;
+
+        return currentInteractorNetId != localInteractor.netId;
     }
 
     // 서버 기준 범위 체크
@@ -312,7 +339,7 @@ public class EvidencePoint : NetworkBehaviour, IInteractable
         return sqrDist <= 4f;
     }
 
-    // 로컬에서 증거 방향 보게 하기
+    // 로컬에서 증거 방향 바라보기
     private void FaceToEvidenceLocal()
     {
         if (localMove == null)
@@ -327,21 +354,20 @@ public class EvidencePoint : NetworkBehaviour, IInteractable
         localMove.FaceDirection(lookDir.normalized);
     }
 
-    // 로컬 이동 잠금
+    // 로컬에서 이동 잠금
     private void LockMovementLocal(bool value)
     {
         if (localMove != null)
             localMove.SetMoveLock(value);
     }
 
-    // 로컬 searching 애니메이션 on/off
+    // 로컬에서 조사 애니메이션 on/off
     private void SetSearchingLocal(bool value)
     {
         if (localMove != null)
             localMove.SetSearching(value);
     }
 
-    // 범위 진입 시 로컬 플레이어만 상호작용 등록
     private void OnTriggerEnter(Collider other)
     {
         if (!other.CompareTag("Survivor"))
@@ -354,6 +380,7 @@ public class EvidencePoint : NetworkBehaviour, IInteractable
         if (interactor == null)
             return;
 
+        // 로컬 플레이어만 처리
         if (!interactor.isLocalPlayer)
             return;
 
@@ -363,11 +390,18 @@ public class EvidencePoint : NetworkBehaviour, IInteractable
         if (localMove == null)
             localMove = interactor.GetComponentInParent<SurvivorMove>();
 
-        interactor.SetInteractable(this);
+        // 이 로컬 플레이어의 ProgressUI 연결
+        progressUI = interactor.ProgressUI;
+
+        // 범위 안 진입 표시
+        isLocalInside = true;
+
+        // 들어오자마자 현재 상태 기준으로 후보 등록 시도
+        RefreshLocalAvailability();
+
         Debug.Log($"{name} 범위 진입");
     }
 
-    // 범위 이탈 시 상호작용 해제 + 취소 처리
     private void OnTriggerExit(Collider other)
     {
         if (!other.CompareTag("Survivor"))
@@ -383,11 +417,14 @@ public class EvidencePoint : NetworkBehaviour, IInteractable
         if (!interactor.isLocalPlayer)
             return;
 
+        // 후보 목록에서 제거
         interactor.ClearInteractable(this);
+
+        // 범위 밖
+        isLocalInside = false;
 
         if (localInteractor == interactor)
         {
-            // 로컬 효과 즉시 해제
             LockMovementLocal(false);
             SetSearchingLocal(false);
 
@@ -397,7 +434,7 @@ public class EvidencePoint : NetworkBehaviour, IInteractable
                 progressUI.Hide();
             }
 
-            // 서버에도 취소 요청
+            // 조사 중이었다면 서버에도 종료 요청
             CmdEndInteract();
 
             localInteractor = null;
