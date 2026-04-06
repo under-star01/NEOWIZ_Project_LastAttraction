@@ -34,7 +34,7 @@ public class SurvivorHeal : MonoBehaviour, IInteractable
     }
 
     // Èú ½ÃÀÛ
-    public void BeginInteract()
+    public void BeginInteract(GameObject actor)
     {
         if (CanHeal() == false)
             return;

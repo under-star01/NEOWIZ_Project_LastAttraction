@@ -68,7 +68,7 @@ public class EvidencePoint : NetworkBehaviour, IInteractable
     }
 
     // 로컬 플레이어가 상호작용 시작
-    public void BeginInteract()
+    public void BeginInteract(GameObject actor)
     {
         if (isCompleted)
             return;

@@ -58,7 +58,7 @@ public class SurvivorInteractor : NetworkBehaviour
             if (!isInteracting && !input.IsCrouching)
             {
                 isInteracting = true;
-                currentInteractable.BeginInteract();
+                currentInteractable.BeginInteract(this.gameObject);
             }
         }
         else
@@ -81,7 +81,7 @@ public class SurvivorInteractor : NetworkBehaviour
 
         if (input.IsInteracting2)
         {
-            currentInteractable.BeginInteract();
+            currentInteractable.BeginInteract(this.gameObject);
         }
     }
 
