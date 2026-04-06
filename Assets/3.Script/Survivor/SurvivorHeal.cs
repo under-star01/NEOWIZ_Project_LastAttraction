@@ -149,7 +149,6 @@ public class SurvivorHeal : NetworkBehaviour, IInteractable
 
         isHealing = true;
         healer = sender.identity.netId;
-        progress = 0f;
 
         // 힐받는 대상은 다른 상호작용 불가
         targetState.SetBeingHealedServer(true);
@@ -225,7 +224,6 @@ public class SurvivorHeal : NetworkBehaviour, IInteractable
     {
         isHealing = false;
         healer = 0;
-        progress = 0f;
 
         // 힐받는 상태 해제
         targetState.SetBeingHealedServer(false);
@@ -244,7 +242,6 @@ public class SurvivorHeal : NetworkBehaviour, IInteractable
     {
         isHealing = false;
         healer = 0;
-        progress = healTime;
 
         // 힐받는 상태 해제
         targetState.SetBeingHealedServer(false);
