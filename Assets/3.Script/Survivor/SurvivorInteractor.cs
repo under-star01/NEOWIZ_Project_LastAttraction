@@ -16,6 +16,11 @@ public class SurvivorInteractor : NetworkBehaviour
     public bool IsInteracting => isInteracting;
     public ProgressUI ProgressUI => progressUI;
 
+    public bool IsCurrentInteractable(IInteractable interactable)
+    {
+        return currentInteractable == interactable;
+    }
+
     private void Awake()
     {
         input = GetComponent<SurvivorInput>();

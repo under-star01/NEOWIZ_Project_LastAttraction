@@ -307,10 +307,20 @@ public class SurvivorHeal : NetworkBehaviour, IInteractable
     // 현재 로컬 플레이어가 힐 중일 때만 UI 표시
     private void UpdateLocalUI()
     {
+        if (progressUI == null && localHealerInteractor != null)
+        {
+            progressUI = localHealerInteractor.ProgressUI;
+        }
+
         if (progressUI == null)
             return;
 
         if (localHealerInteractor == null)
+            return;
+
+        // 현재 로컬 플레이어가 실제로 잡고 있는 상호작용 대상이
+        // 이 SurvivorHeal이 아니면 UI를 건드리지 않는다.
+        if (!localHealerInteractor.IsCurrentInteractable(this) && !isHealing)
             return;
 
         bool isMyHeal =
@@ -326,7 +336,11 @@ public class SurvivorHeal : NetworkBehaviour, IInteractable
         }
         else
         {
-            progressUI.Hide();
+            // 이 오브젝트가 현재 상호작용 대상일 때만 Hide
+            if (localHealerInteractor.IsCurrentInteractable(this))
+            {
+                progressUI.Hide();
+            }
         }
     }
 
@@ -417,10 +431,7 @@ public class SurvivorHeal : NetworkBehaviour, IInteractable
             localHealerMove.SetMoveLock(value);
     }
 
-    // 힐 받는 쪽도 이동만 잠금
-    // SurvivorMove에서 SetMoveLock은 이동만 막고,
-    // 로컬 카메라 회전 처리(UpdateLocalLook)는 그대로 돌아가므로
-    // 힐 받는 대상은 시점 회전은 가능하다.
+    // 힐 받는 쪽도 이동 잠금
     private void LockTargetMovementLocal(bool value)
     {
         if (targetMove != null)

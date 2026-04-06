@@ -248,10 +248,21 @@ public class EvidencePoint : NetworkBehaviour, IInteractable
     // 현재 로컬 플레이어가 조사 중일 때만 UI 표시
     private void UpdateLocalUI()
     {
+        if (progressUI == null && localInteractor != null)
+        {
+            progressUI = localInteractor.ProgressUI;
+        }
+
         if (progressUI == null)
             return;
 
         if (localInteractor == null)
+            return;
+
+        // 현재 로컬 플레이어가 실제로 잡고 있는 상호작용 대상이
+        // 이 EvidencePoint가 아니면 UI를 건드리지 않는다.
+        // 다른 상호작용 오브젝트가 같은 ProgressUI를 쓰고 있을 수 있기 때문.
+        if (!localInteractor.IsCurrentInteractable(this) && !isInteracting)
             return;
 
         bool isMyInteract =
@@ -266,7 +277,12 @@ public class EvidencePoint : NetworkBehaviour, IInteractable
         }
         else
         {
-            progressUI.Hide();
+            // 이 오브젝트가 실제 상호작용 대상일 때만 Hide
+            // 그래야 다른 오브젝트 UI를 덮어쓰지 않음
+            if (localInteractor.IsCurrentInteractable(this))
+            {
+                progressUI.Hide();
+            }
         }
     }
 
