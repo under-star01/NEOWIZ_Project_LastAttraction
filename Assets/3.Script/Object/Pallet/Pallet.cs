@@ -239,6 +239,7 @@ public class Pallet : NetworkBehaviour, IInteractable
 
         // 실제로 판자가 내려간 상태로 변경
         isDropped = true;
+        ApplyDroppedState(true);
 
         // 내려가면서 살인마가 맞았는지 검사
         CheckKillerStunServer();
