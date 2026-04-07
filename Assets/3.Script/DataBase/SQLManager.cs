@@ -24,6 +24,17 @@ public enum LoginResult
     Failed
 }
 
+// 로그인 정보
+[Serializable]
+public class LoginUserData
+{
+    public int accountId;
+    public string loginId;
+    public string nickname;
+    public int exp;
+    public int level;
+}
+
 public class SQLManager : MonoBehaviour
 {
     public static SQLManager Instance;
@@ -32,7 +43,7 @@ public class SQLManager : MonoBehaviour
     [SerializeField] private string server = "127.0.0.1";
     [SerializeField] private int port = 3306;
     [SerializeField] private string database = "last_attraction_db";
-    [SerializeField] private string user = "root";
+    [SerializeField] private string user = "understar";
     [SerializeField] private string password = "";
 
     [Header("Debug")]
@@ -57,33 +68,27 @@ public class SQLManager : MonoBehaviour
     private void Start()
     {
         Debug.Log("[SQLManager] Start 호출");
+    }
 
-        if (!NetworkServer.active)
+    public void ServerInitialize()
+    {
+        if (isInitialized)
         {
-            Debug.Log("[SQLManager] 서버 상태가 아니므로 DB 초기화를 생략합니다.");
+            Debug.Log("[SQLManager] 이미 초기화되어 있습니다.");
             return;
         }
 
-        // -----서버에서만 실행-----
-        
-        Initialize();
-
-        if (testConnectionOnStart)
-        {
-            // Debug 출력용 메소드
-            TestConnection();
-        }
-    }
-
-    private void Initialize()
-    {
-        // 서버에 전달할 connectionString 준비
         connectionString =
             $"Server={server};Port={port};Database={database};User ID={user};Password={password};";
 
         isInitialized = true;
 
         Debug.Log("[SQLManager] DB 초기화 완료");
+
+        if (testConnectionOnStart)
+        {
+            TestConnection();
+        }
     }
 
     // 서버 준비 상태 반환 메소드
@@ -185,9 +190,9 @@ public class SQLManager : MonoBehaviour
     }
 
     // 로그인 메소드
-    public LoginResult Login(string loginId, string rawPassword, out string nickname)
+    public LoginResult Login(string loginId, string rawPassword, out LoginUserData userData)
     {
-        nickname = string.Empty;
+        userData = null;
 
         // 서버 준비 및 입력 검사
         if (!IsServerReady())
@@ -205,7 +210,7 @@ public class SQLManager : MonoBehaviour
 
                 // 입력 내용 검색 Query문 작성
                 const string query = @"
-                    SELECT password_hash, nickname
+                    SELECT id, login_id, nickname, exp, level, password_hash
                     FROM users
                     WHERE login_id = @loginId
                     LIMIT 1;
@@ -225,11 +230,21 @@ public class SQLManager : MonoBehaviour
 
                         // DB 저장값 저장
                         string savedHash = reader.GetString("password_hash");
-                        nickname = reader.GetString("nickname");
 
-                        // 비밀번호 확인 후 결과 반환
                         bool isValid = VerifyPassword(rawPassword, savedHash);
-                        return isValid ? LoginResult.Success : LoginResult.WrongPassword;
+                        if (!isValid)
+                            return LoginResult.WrongPassword;
+
+                        userData = new LoginUserData
+                        {
+                            accountId = reader.GetInt32("id"),
+                            loginId = reader.GetString("login_id"),
+                            nickname = reader.GetString("nickname"),
+                            exp = reader.GetInt32("exp"),
+                            level = reader.GetInt32("level")
+                        };
+
+                        return LoginResult.Success;
                     }
                 }
             }
