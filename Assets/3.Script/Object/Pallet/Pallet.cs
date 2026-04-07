@@ -13,9 +13,10 @@ public class Pallet : NetworkBehaviour, IInteractable
     [SerializeField] private Collider droppedCollider;   // 내려간 뒤 콜라이더
     [SerializeField] private Transform leftPoint;        // 왼쪽 상호작용 기준점
     [SerializeField] private Transform rightPoint;       // 오른쪽 상호작용 기준점
-    [SerializeField] private Vector3 vaultOffset = new Vector3(0f, 0.2f, 0f); // 볼트할 때 살짝 위로 띄울 값
 
     [Header("이동/연출 설정")]
+    [SerializeField] private Vector3 vaultOffset = new Vector3(0f, 0.2f, 0f); // 볼트할 때 살짝 위로 띄울 값
+    [SerializeField] private float pushDistance = 1.2f; // 바깥으로 보낼 거리
     [SerializeField] private float moveToPointSpeed = 5f;   // 시작 위치 포인트로 이동하는 속도
     [SerializeField] private float dropActionTime = 0.5f;   // 판자 내리기 액션 시간
     [SerializeField] private float survivorVaultSpeed = 4f; // 생존자 판자 넘는 속도
@@ -241,6 +242,9 @@ public class Pallet : NetworkBehaviour, IInteractable
         isDropped = true;
         ApplyDroppedState(true);
 
+        // 내린 콜라이더의 맞은 생존자는 밀기
+        PushOutServer();
+
         // 내려가면서 살인마가 맞았는지 검사
         CheckKillerStunServer();
 
@@ -332,6 +336,75 @@ public class Pallet : NetworkBehaviour, IInteractable
         }
 
         StopUseServer();
+    }
+
+    [Server]
+    private void PushOutServer()
+    {
+        if (droppedCollider == null)
+            return;
+
+        Collider[] hits = Physics.OverlapBox(
+            droppedCollider.bounds.center,
+            droppedCollider.bounds.extents,
+            droppedCollider.transform.rotation
+        );
+
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Collider hit = hits[i];
+
+            if (!hit.CompareTag("Survivor"))
+                continue;
+
+            NetworkIdentity identity = hit.GetComponent<NetworkIdentity>();
+            if (identity == null)
+                identity = hit.GetComponentInParent<NetworkIdentity>();
+
+            // 판자 내린 본인은 제외
+            if (identity != null && identity.netId == currentActorNetId)
+                continue;
+
+            Transform target = hit.transform;
+
+            // 루트 플레이어 위치로 맞추기
+            SurvivorMove move = hit.GetComponent<SurvivorMove>();
+            if (move == null)
+                move = hit.GetComponentInParent<SurvivorMove>();
+
+            if (move != null)
+                target = move.transform;
+
+            CharacterController controller = target.GetComponent<CharacterController>();
+            if (controller == null)
+                controller = target.GetComponentInParent<CharacterController>();
+
+            // 판자 기준 왼쪽/오른쪽 판별
+            Vector3 localPos = transform.InverseTransformPoint(target.position);
+
+            Vector3 teleportPos;
+
+            if (localPos.x < 0f)
+            {
+                // 왼쪽에 있던 생존자는 왼쪽 바깥으로
+                teleportPos = leftPoint.position + (-transform.right * pushDistance);
+            }
+            else
+            {
+                // 오른쪽에 있던 생존자는 오른쪽 바깥으로
+                teleportPos = rightPoint.position + (transform.right * pushDistance);
+            }
+
+            teleportPos.y = target.position.y;
+
+            if (controller != null)
+                controller.enabled = false;
+
+            target.position = teleportPos;
+
+            if (controller != null)
+                controller.enabled = true;
+        }
     }
 
     // 살인마 판자 부수기

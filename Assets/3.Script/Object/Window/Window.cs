@@ -10,7 +10,7 @@ public class Window : NetworkBehaviour, IInteractable
     [Header("참조")]
     [SerializeField] private Transform leftPoint;
     [SerializeField] private Transform rightPoint;
-    [SerializeField] private Vector3 upPoint = new Vector3(0f, 0.5f, 0f);
+    [SerializeField] private Vector3 upPoint = new Vector3(0f, 0.2f, 0f);
 
     [Header("이동/연출 설정")]
     [SerializeField] private float moveToPointSpeed = 5f;
