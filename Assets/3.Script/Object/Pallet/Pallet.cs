@@ -16,7 +16,7 @@ public class Pallet : NetworkBehaviour, IInteractable
 
     [Header("이동/연출 설정")]
     [SerializeField] private Vector3 vaultOffset = new Vector3(0f, 0.2f, 0f); // 볼트할 때 살짝 위로 띄울 값
-    [SerializeField] private float pushDistance = 1.2f; // 바깥으로 보낼 거리
+    [SerializeField] private float pushDistance = 0.5f; // 바깥으로 보낼 거리
     [SerializeField] private float moveToPointSpeed = 5f;   // 시작 위치 포인트로 이동하는 속도
     [SerializeField] private float dropActionTime = 0.5f;   // 판자 내리기 액션 시간
     [SerializeField] private float survivorVaultSpeed = 4f; // 생존자 판자 넘는 속도
