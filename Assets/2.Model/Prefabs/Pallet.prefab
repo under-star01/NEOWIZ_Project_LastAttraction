@@ -147,7 +147,7 @@ MonoBehaviour:
   leftPoint: {fileID: 3809310533888025628}
   rightPoint: {fileID: 9112308028019181740}
   vaultOffset: {x: 0, y: 0.2, z: 0}
-  pushDistance: 0.5
+  pushDistance: 0.1
   moveToPointSpeed: 5
   dropActionTime: 0.5
   survivorVaultSpeed: 4
