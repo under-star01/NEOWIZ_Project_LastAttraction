@@ -1,7 +1,8 @@
 using UnityEngine;
 using System.Collections;
+using Mirror;
 
-public class KillerInteractor : MonoBehaviour
+public class KillerInteractor : NetworkBehaviour
 {
     [Header("Interaction Settings")]
     public float interactRange = 2.0f;
@@ -21,6 +22,7 @@ public class KillerInteractor : MonoBehaviour
 
     void Update()
     {
+        if (!isLocalPlayer) return;
         // 1. 앞에 상호작용 대상이 있는지 탐색
         SearchTarget();
 
@@ -29,8 +31,9 @@ public class KillerInteractor : MonoBehaviour
         {
             if (currentTarget != null)
             {
-                // 오브젝트의 기능을 호출 (창틀 넘기, 판자 부수기 등 실행)
-                currentTarget.BeginInteract(this.gameObject);
+                // currentTarget.gameObject 대신, 인터페이스를 구현하고 있는 실제 컴포넌트의 gameObject를 찾습니다.
+                GameObject targetObj = ((MonoBehaviour)currentTarget).gameObject;
+                CmdInteract(targetObj);
             }
         }
     }
@@ -63,5 +66,15 @@ public class KillerInteractor : MonoBehaviour
     {
         yield return new WaitForSeconds(delay);
         state.ChangeState(KillerCondition.Idle);
+    }
+
+    [Command]
+    private void CmdInteract(GameObject target)
+    {
+        IInteractable interactable = target.GetComponent<IInteractable>();
+        if (interactable != null)
+        {
+            interactable.BeginInteract(this.gameObject);
+        }
     }
 }
