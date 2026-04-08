@@ -28,6 +28,9 @@ public class KillerCombat : NetworkBehaviour
 
     private NetworkAnimator networkAnimator;
 
+    // 이번 공격에서 실제로 맞은 생존자 netId 저장
+    private uint hitSurvivorNetId;
+
     void Awake()
     {
         input = GetComponent<KillerInput>();
@@ -72,6 +75,7 @@ public class KillerCombat : NetworkBehaviour
             {
                 hasHitTarget = false;
                 currentLungeTime = 0f;
+                hitSurvivorNetId = 0;
                 StartLunge();
             }
 
@@ -84,25 +88,27 @@ public class KillerCombat : NetworkBehaviour
             // 최대 도달 혹은 타격 성공 시 종료
             if (currentLungeTime >= maxLungeDuration || hasHitTarget)
             {
-                // [중요] 계산된 로컬 변수값들을 서버로 넘겨줍니다. [cite: 2026-04-06]
-                EndLunge(currentLungeTime, hasHitTarget, currentPenaltyTime);
+                // 맞은 생존자 netId까지 같이 서버에 넘김
+                EndLunge(currentLungeTime, hasHitTarget, currentPenaltyTime, hitSurvivorNetId);
             }
         }
         else if (state.CurrentCondition == KillerCondition.Lunging)
         {
-            EndLunge(currentLungeTime, hasHitTarget, currentPenaltyTime);
+            EndLunge(currentLungeTime, hasHitTarget, currentPenaltyTime, hitSurvivorNetId);
         }
     }
 
     private void CheckHitDetection()
     {
         if (hasHitTarget) return;
+        if (attackPoint == null) return;
 
         // 벽 충돌 체크
         if (Physics.CheckSphere(attackPoint.position, attackRadius * 0.5f, obstacleLayer))
         {
             hasHitTarget = true;
             currentPenaltyTime = wallHitPenalty;
+            hitSurvivorNetId = 0;
             return;
         }
 
@@ -110,8 +116,30 @@ public class KillerCombat : NetworkBehaviour
         Collider[] hitSurvivors = Physics.OverlapSphere(attackPoint.position, attackRadius, survivorLayer);
         if (hitSurvivors.Length > 0)
         {
-            hasHitTarget = true;
-            currentPenaltyTime = hitSuccessPenalty;
+            for (int i = 0; i < hitSurvivors.Length; i++)
+            {
+                Collider hit = hitSurvivors[i];
+                if (hit == null) continue;
+
+                SurvivorState survivorState = hit.GetComponent<SurvivorState>();
+                if (survivorState == null)
+                    survivorState = hit.GetComponentInParent<SurvivorState>();
+
+                if (survivorState == null)
+                    continue;
+
+                NetworkIdentity identity = survivorState.GetComponent<NetworkIdentity>();
+                if (identity == null)
+                    identity = survivorState.GetComponentInParent<NetworkIdentity>();
+
+                if (identity == null)
+                    continue;
+
+                hasHitTarget = true;
+                currentPenaltyTime = hitSuccessPenalty;
+                hitSurvivorNetId = identity.netId;
+                return;
+            }
         }
     }
 
@@ -121,17 +149,39 @@ public class KillerCombat : NetworkBehaviour
         state.ChangeState(KillerCondition.Lunging);
         hasHitTarget = false;
         currentLungeTime = 0f;
-        networkAnimator.SetTrigger("Attack");
+        hitSurvivorNetId = 0;
+
+        if (networkAnimator != null)
+            networkAnimator.SetTrigger("Attack");
+
         Debug.Log("런지 시작!");
     }
 
     [Command]
-    private void EndLunge(float lungeTime, bool isHit, float penalty)
+    private void EndLunge(float lungeTime, bool isHit, float penalty, uint survivorNetId)
     {
         state.ChangeState(KillerCondition.Recovering);
 
         // 서버에서 최종 페널티 시간 재계산
         float finalPenalty = isHit ? penalty : Mathf.Max(1.2f, lungeTime * hitFailPenalty);
+
+        // 실제 생존자 피격 적용
+        if (isHit && survivorNetId != 0)
+        {
+            if (NetworkServer.spawned.TryGetValue(survivorNetId, out NetworkIdentity identity))
+            {
+                SurvivorState survivorState = identity.GetComponent<SurvivorState>();
+                if (survivorState == null)
+                    survivorState = identity.GetComponentInChildren<SurvivorState>();
+                if (survivorState == null)
+                    survivorState = identity.GetComponentInParent<SurvivorState>();
+
+                if (survivorState != null)
+                {
+                    survivorState.TakeHit();
+                }
+            }
+        }
 
         // 애니메이션 속도 계산 및 모든 클라이언트 적용
         float animSpeed = baseAttackAnimationLength / finalPenalty;
@@ -152,5 +202,13 @@ public class KillerCombat : NetworkBehaviour
             animator.SetFloat("AttackSpeed", Mathf.Clamp(speed, 1.0f, 3.0f));
             // 트리거는 이미 CmdStartLunge에서 실행되었거나, 여기서 한 번 더 보정 가능
         }
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        if (attackPoint == null) return;
+
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(attackPoint.position, attackRadius);
     }
 }
