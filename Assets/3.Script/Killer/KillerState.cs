@@ -16,19 +16,16 @@ public class KillerState : NetworkBehaviour
     // --- [외부 참조용 프로퍼티] ---
     public KillerCondition CurrentCondition => currentCondition;
 
-    // 런지 중이거나 평상시, 후딜레이일 때만 이동 가능
     public bool CanMove =>
         currentCondition == KillerCondition.Idle ||
         currentCondition == KillerCondition.Lunging ||
         currentCondition == KillerCondition.Recovering;
 
-    // 스턴, 상호작용 중이 아닐 때만 시야 회전 가능
     public bool CanLook =>
         currentCondition != KillerCondition.Hit &&
         currentCondition != KillerCondition.Vaulting &&
         currentCondition != KillerCondition.Breaking;
 
-    // 평상시일 때만 공격/상호작용 시작 가능
     public bool CanAttack => currentCondition == KillerCondition.Idle;
     public bool IsInAttackAnimation => currentCondition == KillerCondition.Recovering;
 
@@ -44,50 +41,58 @@ public class KillerState : NetworkBehaviour
     public void ChangeState(KillerCondition newState)
     {
         if (currentCondition == newState) return;
+
+        // 1. [해결방법 적용] 서버에서 상태가 바뀌는 즉시 트리거를 당깁니다. [cite: 2026-04-06]
+        // 서버가 여기서 한 번만 실행하면 Mirror가 모든 클라이언트에게 전파합니다. [cite: 2026-04-06]
+        TriggerAnimationEvent(newState);
+
+        // 2. 상태를 변경합니다. (이후 SyncVar 훅을 통해 클라이언트들의 Update가 반응함)
         currentCondition = newState;
     }
 
-    // --- [1. 사건 관리] 상태가 바뀌는 "순간" 트리거 애니메이션 실행 [cite: 2026-04-06]
-    private void OnConditionChanged(KillerCondition oldState, KillerCondition newState)
+    // 트리거 전용 헬퍼 함수
+    private void TriggerAnimationEvent(KillerCondition condition)
     {
-        if (!isServer) return;
-
         if (networkAnimator == null) networkAnimator = GetComponent<NetworkAnimator>();
 
-        switch (newState)
+        switch (condition)
         {
             case KillerCondition.Lunging:
-                networkAnimator.SetTrigger("Attack"); // 공격 시작 애니메이션
+                networkAnimator.SetTrigger("Attack");
                 break;
             case KillerCondition.Hit:
-                networkAnimator.SetTrigger("Hit");    // 피격 애니메이션
+                networkAnimator.SetTrigger("Hit");
                 break;
             case KillerCondition.Breaking:
-                networkAnimator.SetTrigger("Break");  // 판자 파괴 애니메이션
+                networkAnimator.SetTrigger("Break");
                 break;
         }
     }
 
-    // --- [2. 상태 관리] 매 프레임 변하는 애니메이션 파라미터 업데이트 [cite: 2026-04-06]
+    // SyncVar 훅은 이제 시각적 보정이나 로그용으로만 사용합니다. [cite: 2026-04-06]
+    private void OnConditionChanged(KillerCondition oldState, KillerCondition newState)
+    {
+        // 트리거 로직을 ChangeState로 옮겼으므로 여기는 비워두거나 
+        // 클라이언트 전용 효과(사운드 등)를 넣을 때 사용하세요. [cite: 2026-04-07]
+    }
+
+    // --- [상태 관리] 매 프레임 변하는 파라미터는 변수값에 따라 모든 클라이언트에서 업데이트 [cite: 2026-04-06]
     private void Update()
     {
         if (animator == null) return;
 
-        // 애니메이션이 섞이면 안 되는 '바쁜' 상태 체크 [cite: 2026-04-06]
         bool isBusy = currentCondition == KillerCondition.Recovering ||
                       currentCondition == KillerCondition.Hit ||
                       currentCondition == KillerCondition.Breaking;
 
         if (!isBusy)
         {
-            // KillerMove의 동기화된 속도 데이터를 가져와 적용
-            // 프로퍼티 이름이 SyncedMoveSpeed인지 확인해 보세요.
+            // KillerMove의 공개 프로퍼티 SyncedMoveSpeed를 참조합니다.
             animator.SetFloat("Speed", move.SyncedMoveSpeed, 0.1f, Time.deltaTime);
             animator.SetBool("isLunging", currentCondition == KillerCondition.Lunging);
         }
         else
         {
-            // 상호작용 중에는 발이 미끄러지지 않게 속도 0 고정 [cite: 2026-04-06]
             animator.SetFloat("Speed", 0f, 0.1f, Time.deltaTime);
             animator.SetBool("isLunging", false);
         }
