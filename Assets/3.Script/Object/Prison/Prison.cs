@@ -459,9 +459,6 @@ public class Prison : NetworkBehaviour, IInteractable
     // 실제 문 상태 적용
     private void ApplyDoor(bool open)
     {
-        if (doorBlocker != null)
-            doorBlocker.enabled = !open;
-
         if (animator == null)
             return;
 
@@ -469,9 +466,22 @@ public class Prison : NetworkBehaviour, IInteractable
         animator.ResetTrigger("Close");
 
         if (open)
+        {
+            if (doorBlocker != null)
+                doorBlocker.enabled = false;
+
             animator.SetTrigger("Open");
+        }
         else
+        {
             animator.SetTrigger("Close");
+        }
+    }
+
+    public void EnableDoorBlocker()
+    {
+        if (doorBlocker != null)
+            doorBlocker.enabled = true;
     }
 
     // 로컬 UI 갱신
