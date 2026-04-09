@@ -193,7 +193,6 @@ public class KillerMove : NetworkBehaviour
     }
 <<<<<<< HEAD
 <<<<<<< HEAD
-<<<<<<< HEAD
 =======
 
     [Server]
@@ -205,8 +204,6 @@ public class KillerMove : NetworkBehaviour
     }
 >>>>>>> parent of f190c4c (0409_killer_server1)
 =======
-=======
->>>>>>> parent of 7a73d10 (0409_killer_server2)
 
     private void UpdateAnimation()
     {
@@ -231,8 +228,5 @@ public class KillerMove : NetworkBehaviour
             animator.SetFloat("Speed", 0f, 0.1f, Time.deltaTime);
         }
     }
-<<<<<<< HEAD
->>>>>>> parent of 7a73d10 (0409_killer_server2)
-=======
 >>>>>>> parent of 7a73d10 (0409_killer_server2)
 }
