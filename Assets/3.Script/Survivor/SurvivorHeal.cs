@@ -86,7 +86,7 @@ public class SurvivorHeal : NetworkBehaviour, IInteractable
         SetHealerLock(false);
         SetHealAnim(false);
 
-        localHealerInteractor.HideProgress(this, true);
+        localHealerInteractor.HideProgress(this, false);
 
         CmdEndHeal();
     }
@@ -115,6 +115,10 @@ public class SurvivorHeal : NetworkBehaviour, IInteractable
         if (healerState.IsDowned)
             return;
 
+        // 감옥 상태는 힐 불가
+        if (targetState.IsImprisoned)
+            return;
+
         // 자기 자신 힐 방지
         if (healerState == targetState)
             return;
@@ -133,7 +137,6 @@ public class SurvivorHeal : NetworkBehaviour, IInteractable
 
         isHealing = true;
         healer = sender.identity.netId;
-        progress = 0f;
 
         // 힐받는 대상은 다른 상호작용 못 하게
         targetState.SetBeingHealedServer(true);
@@ -205,7 +208,6 @@ public class SurvivorHeal : NetworkBehaviour, IInteractable
     {
         isHealing = false;
         healer = 0;
-        progress = 0f;
 
         targetState.SetBeingHealedServer(false);
 
@@ -250,10 +252,10 @@ public class SurvivorHeal : NetworkBehaviour, IInteractable
             targetMove.StopAnimation();
 
         if (localHealerInteractor != null)
-            localHealerInteractor.HideProgress(this, true);
+            localHealerInteractor.HideProgress(this, false);
 
         if (localTargetInteractor != null)
-            localTargetInteractor.HideProgress(this, true);
+            localTargetInteractor.HideProgress(this, false);
     }
 
     private void UpdateUI()
@@ -317,6 +319,10 @@ public class SurvivorHeal : NetworkBehaviour, IInteractable
 
         // 다운된 생존자는 힐 불가
         if (localHealerState.IsDowned)
+            return false;
+
+        // 감옥 상태는 힐 불가
+        if (targetState.IsImprisoned)
             return false;
 
         // 자기 자신 힐 방지
@@ -436,7 +442,7 @@ public class SurvivorHeal : NetworkBehaviour, IInteractable
 
         SetHealerLock(false);
         SetHealAnim(false);
-        localHealerInteractor.HideProgress(this, true);
+        localHealerInteractor.HideProgress(this, false);
 
         CmdEndHeal();
 

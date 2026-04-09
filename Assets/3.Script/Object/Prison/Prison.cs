@@ -8,6 +8,7 @@ public class Prison : NetworkBehaviour, IInteractable
 
     [Header("참조")]
     [SerializeField] private Transform prisonerPoint;      // 죄수를 감옥 안에 둘 위치
+    [SerializeField] private Transform lookPoint;          // 상호작용할 때 바라볼 위치(문 쪽)
     [SerializeField] private Animator animator;            // 감옥 문 애니메이터
     [SerializeField] private Collider doorBlocker;         // 문이 닫혀 있을 때 막는 콜라이더
 
@@ -42,7 +43,7 @@ public class Prison : NetworkBehaviour, IInteractable
     [SyncVar]
     private float progress;
 
-    // 로컬 UI 표시용 참조
+    // 로컬 UI / 애니메이션용 참조
     private SurvivorInteractor localInteractor;
     private SurvivorMove localMove;
     private SurvivorState localState;
@@ -65,14 +66,14 @@ public class Prison : NetworkBehaviour, IInteractable
 
     private void Update()
     {
-        // 서버에서만 감옥 타이머 감소
+        // 서버에서만 감옥 타이머 감소 / Hold 진행
         if (isServer)
         {
             TickTime();
             TickInteract();
         }
 
-        // 로컬 UI 갱신
+        // 로컬 UI / 후보 갱신
         UpdateLocalUI();
         RefreshLocalAvailability();
     }
@@ -129,7 +130,6 @@ public class Prison : NetworkBehaviour, IInteractable
 
         CharacterController controller = target.GetComponent<CharacterController>();
 
-        // 순간이동 전에 CharacterController 잠깐 끔
         if (controller != null)
             controller.enabled = false;
 
@@ -144,11 +144,9 @@ public class Prison : NetworkBehaviour, IInteractable
     [Server]
     private void TickTime()
     {
-        // 죄수가 없으면 종료
         if (!IsOccupied)
             return;
 
-        // 문이 이미 열렸으면 더 이상 시간 감소 안 함
         if (isDoorOpen)
             return;
 
@@ -214,7 +212,6 @@ public class Prison : NetworkBehaviour, IInteractable
 
         progress += Time.deltaTime;
 
-        // 3초 다 채우면 처리 실행
         if (progress >= interactTime)
         {
             progress = interactTime;
@@ -235,9 +232,8 @@ public class Prison : NetworkBehaviour, IInteractable
         if (actorState == null)
             return;
 
-        // 로컬에서 즉시 이동 잠금은 하지 않음
-        // 감옥 안에서는 움직이면서 상호작용 취소/유지 판단을 하고 싶을 수 있기 때문
-        // 그냥 서버에 시작 요청만 보냄
+        // 로컬에서 감옥 쪽 바라보기 + Searching 시작
+        StartLocalInteractFx();
 
         if (isServer)
         {
@@ -259,6 +255,8 @@ public class Prison : NetworkBehaviour, IInteractable
     // Hold 중 손 떼면 취소
     public void EndInteract()
     {
+        StopLocalInteractFx();
+
         if (isServer)
         {
             TryEnd();
@@ -390,7 +388,6 @@ public class Prison : NetworkBehaviour, IInteractable
     {
         float roll = Random.Range(0f, 100f);
 
-        // 성공
         if (roll <= escapeChance)
         {
             OpenDoor();
@@ -462,18 +459,15 @@ public class Prison : NetworkBehaviour, IInteractable
     // 실제 문 상태 적용
     private void ApplyDoor(bool open)
     {
-        // 문이 열리면 막는 콜라이더 끄기
         if (doorBlocker != null)
             doorBlocker.enabled = !open;
 
         if (animator == null)
             return;
 
-        // 이전 트리거 꼬임 방지용으로 반대 트리거 리셋
         animator.ResetTrigger("Open");
         animator.ResetTrigger("Close");
 
-        // 열기 / 닫기 트리거 실행
         if (open)
             animator.SetTrigger("Open");
         else
@@ -506,14 +500,12 @@ public class Prison : NetworkBehaviour, IInteractable
         if (localInteractor == null || localState == null)
             return;
 
-        // 사망이면 제거
         if (localState.IsDead)
         {
             localInteractor.ClearInteractable(this);
             return;
         }
 
-        // 감옥이 비었거나 문이 열렸으면 제거
         if (!IsOccupied || isDoorOpen)
         {
             localInteractor.ClearInteractable(this);
@@ -547,8 +539,40 @@ public class Prison : NetworkBehaviour, IInteractable
         Vector3 closest = col.ClosestPoint(actorTransform.position);
         float sqrDist = (closest - actorTransform.position).sqrMagnitude;
 
-        // 기존 상호작용들과 비슷하게 4 이내로 사용 가능
         return sqrDist <= 4f;
+    }
+
+    // 로컬에서 감옥 쪽 바라보고 Searching 시작
+    private void StartLocalInteractFx()
+    {
+        if (localMove == null)
+            return;
+
+        // 상호작용 중에는 이동 불가
+        localMove.SetMoveLock(true);
+
+        // 문 쪽 바라보기
+        Transform target = lookPoint != null ? lookPoint : transform;
+
+        Vector3 lookDir = target.position - localMove.transform.position;
+        lookDir.y = 0f;
+
+        if (lookDir.sqrMagnitude > 0.001f)
+            localMove.FaceDirection(lookDir.normalized);
+
+        // Searching 애니메이션 시작
+        localMove.SetSearching(true);
+    }
+
+    // 로컬 Searching 종료
+    private void StopLocalInteractFx()
+    {
+        if (localMove == null)
+            return;
+
+        // 상호작용 종료 시 다시 이동 가능
+        localMove.SetMoveLock(false);
+        localMove.SetSearching(false);
     }
 
     private void OnTriggerEnter(Collider other)
@@ -602,9 +626,9 @@ public class Prison : NetworkBehaviour, IInteractable
 
         isLocalInside = false;
 
-        // 현재 로컬 플레이어가 나가면 Hold 자동 종료
         if (localInteractor == interactor)
         {
+            StopLocalInteractFx();
             CmdEnd();
 
             localInteractor = null;
@@ -613,10 +637,12 @@ public class Prison : NetworkBehaviour, IInteractable
         }
     }
 
-    // 진행도 UI 강제 종료
+    // 진행도 UI / Searching 강제 종료
     [ClientRpc]
     private void RpcStopLocalUI()
     {
+        StopLocalInteractFx();
+
         if (localInteractor != null)
             localInteractor.HideProgress(this, true);
     }

@@ -5,11 +5,11 @@ using UnityEngine;
 // 생존자 상태 종류
 public enum SurvivorCondition
 {
-    Healthy,      // 정상
-    Injured,      // 부상
-    Downed,       // 다운
-    Imprisoned,   // 감옥
-    Dead          // 사망
+    Healthy,      // 정상0
+    Injured,      // 부상1
+    Downed,       // 다운2
+    Imprisoned,   // 감옥3
+    Dead          // 사망4
 }
 
 public class SurvivorState : NetworkBehaviour
@@ -144,6 +144,10 @@ public class SurvivorState : NetworkBehaviour
         if (isToDowned || IsImprisoned || IsDead)
             return;
 
+        // 피격되면 현재 하고 있던 상호작용 강제 종료
+        if (interactor != null)
+            interactor.ForceStopInteract();
+
         // 정상 -> 부상
         if (currentCondition == SurvivorCondition.Healthy)
         {
@@ -245,6 +249,9 @@ public class SurvivorState : NetworkBehaviour
     [Server]
     public void Die()
     {
+        if (animator != null)
+            animator.SetTrigger("DownHit");
+
         currentPrisonId = 0;
         isDoingInteraction = false;
         isBeingHealed = false;
@@ -263,9 +270,10 @@ public class SurvivorState : NetworkBehaviour
         // 모든 클라이언트에서 다운 피격 애니메이션 실행
         RpcDownHit();
 
+        currentCondition = SurvivorCondition.Downed;
+
         yield return new WaitForSeconds(downHitDuration);
 
-        currentCondition = SurvivorCondition.Downed;
         isToDowned = false;
     }
 
@@ -273,6 +281,9 @@ public class SurvivorState : NetworkBehaviour
     [ClientRpc]
     private void RpcDownHit()
     {
+        if (interactor != null)
+            interactor.ForceStopInteract();
+
         if (move != null)
         {
             move.SetMoveLock(true);
@@ -359,7 +370,5 @@ public class SurvivorState : NetworkBehaviour
             return;
 
         animator.SetInteger("Condition", (int)currentCondition);
-        animator.SetBool("IsImprisoned", IsImprisoned);
-        animator.SetBool("IsDead", IsDead);
     }
 }
