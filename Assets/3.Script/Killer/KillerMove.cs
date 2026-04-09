@@ -80,7 +80,7 @@ public class KillerMove : NetworkBehaviour
         {
             // 3. 원격 플레이어 동기화
             ApplyRemoteLook();
-            //ApplyRemoteAnimator();
+            ApplyRemoteAnimator();
         }
     }
 
@@ -143,8 +143,7 @@ public class KillerMove : NetworkBehaviour
         if (!state.CanMove)
         {
             ApplyGravityOnlyServer();
-            //UpdateAnimatorServer(0f);
-            syncedMoveSpeed = 0f;
+            UpdateAnimatorServer(0f);
             return;
         }
 
@@ -175,8 +174,7 @@ public class KillerMove : NetworkBehaviour
         controller.Move(finalMove * Time.fixedDeltaTime);
 
         // 애니메이션 속도 동기화
-        //UpdateAnimatorServer(moveInput.magnitude);
-        syncedMoveSpeed = moveInput.magnitude;
+        UpdateAnimatorServer(moveInput.magnitude);
     }
 
     [Server]
@@ -187,4 +185,15 @@ public class KillerMove : NetworkBehaviour
 
         controller.Move(new Vector3(0, yVelocity, 0) * Time.fixedDeltaTime);
     }
+<<<<<<< HEAD
+=======
+
+    [Server]
+    private void UpdateAnimatorServer(float targetSpeed)
+    {
+        syncedMoveSpeed = targetSpeed;
+        if (animator != null)
+            animator.SetFloat("Speed", targetSpeed, 0.1f, Time.fixedDeltaTime);
+    }
+>>>>>>> parent of f190c4c (0409_killer_server1)
 }
