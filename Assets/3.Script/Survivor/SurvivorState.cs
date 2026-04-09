@@ -144,6 +144,10 @@ public class SurvivorState : NetworkBehaviour
         if (isToDowned || IsImprisoned || IsDead)
             return;
 
+        // 피격되면 현재 하고 있던 상호작용 강제 종료
+        if (interactor != null)
+            interactor.ForceStopInteract();
+
         // 정상 -> 부상
         if (currentCondition == SurvivorCondition.Healthy)
         {
@@ -276,6 +280,9 @@ public class SurvivorState : NetworkBehaviour
     [ClientRpc]
     private void RpcDownHit()
     {
+        if (interactor != null)
+            interactor.ForceStopInteract();
+
         if (move != null)
         {
             move.SetMoveLock(true);
@@ -362,6 +369,5 @@ public class SurvivorState : NetworkBehaviour
             return;
 
         animator.SetInteger("Condition", (int)currentCondition);
-        animator.SetBool("IsImprisoned", IsImprisoned);
     }
 }

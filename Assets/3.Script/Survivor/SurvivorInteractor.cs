@@ -415,6 +415,22 @@ public class SurvivorInteractor : NetworkBehaviour
         }
     }
 
+    // 피격, 다운 등으로 현재 상호작용을 강제로 끊을 때 사용
+    public void ForceStopInteract()
+    {
+        // Hold 진행 중이면 대상에게 종료 알림
+        if (isInteracting && activeInteractable != null)
+        {
+            isInteracting = false;
+            SetInteractionState(false);
+            activeInteractable.EndInteract();
+        }
+
+        activeInteractable = null;
+        currentInteractable = null;
+        ForceHideProgress();
+    }
+
     [Command]
     private void CmdSetInteractionState(bool value)
     {
