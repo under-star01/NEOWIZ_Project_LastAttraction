@@ -18,7 +18,7 @@ GameObject:
   - component: {fileID: 5564287450219369936}
   m_Layer: 0
   m_Name: Pallet
-  m_TagString: Pallet
+  m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -147,7 +147,6 @@ MonoBehaviour:
   leftPoint: {fileID: 3809310533888025628}
   rightPoint: {fileID: 9112308028019181740}
   vaultOffset: {x: 0, y: 0.2, z: 0}
-  pushDistance: 0
   moveToPointSpeed: 5
   dropActionTime: 0.5
   survivorVaultSpeed: 4
