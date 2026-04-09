@@ -270,9 +270,10 @@ public class SurvivorState : NetworkBehaviour
         // 모든 클라이언트에서 다운 피격 애니메이션 실행
         RpcDownHit();
 
+        currentCondition = SurvivorCondition.Downed;
+
         yield return new WaitForSeconds(downHitDuration);
 
-        currentCondition = SurvivorCondition.Downed;
         isToDowned = false;
     }
 
