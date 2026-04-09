@@ -980,8 +980,8 @@ MonoBehaviour:
   animator: {fileID: 7436738972924962348}
   interactor: {fileID: 0}
   downHitDuration: 3
-  prisonFullTime: 120
-  prisonHalfTime: 60
+  prisonFullTime: 600
+  prisonHalfTime: 300
 --- !u!95 &7436738972924962348
 Animator:
   serializedVersion: 7

@@ -134,7 +134,6 @@ public class Prison : NetworkBehaviour, IInteractable
             controller.enabled = false;
 
         target.position = prisonerPoint.position;
-        target.rotation = prisonerPoint.rotation;
 
         if (controller != null)
             controller.enabled = true;
