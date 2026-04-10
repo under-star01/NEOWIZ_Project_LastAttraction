@@ -472,6 +472,7 @@ public class Pallet : NetworkBehaviour, IInteractable
     [Server]
     private void CheckKillerStunServer()
     {
+        Debug.Log("판자 스턴 검사 시작");
         if (droppedCollider == null)
             return;
 
