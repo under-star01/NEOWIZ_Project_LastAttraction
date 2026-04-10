@@ -45,12 +45,17 @@ public class KillerInteractor : NetworkBehaviour
 
     private void SearchTarget()
     {
+        Vector3 rayOrigin = transform.position + Vector3.up * 1.5f;
         RaycastHit hit;
-        if (Physics.Raycast(transform.position, transform.forward, out hit, interactRange, interactLayer))
+        if (Physics.Raycast(rayOrigin, transform.forward, out hit, interactRange, interactLayer, QueryTriggerInteraction.Collide))
         {
-            currentTarget = hit.collider.GetComponent<IInteractable>();
+            // 3. 자식 콜라이더를 맞췄을 때 부모의 스크립트를 찾도록 GetComponentInParent를 사용합니다.
+            currentTarget = hit.collider.GetComponentInParent<IInteractable>();
         }
-        else currentTarget = null;
+        else
+        {
+            currentTarget = null;
+        }
     }
 
     // 주변의 쓰러진 생존자를 찾아 감옥으로 보내는 로컬 함수
