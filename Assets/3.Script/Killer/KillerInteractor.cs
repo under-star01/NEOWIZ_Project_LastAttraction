@@ -1,41 +1,36 @@
 using UnityEngine;
-using System.Collections;
 using Mirror;
 
 public class KillerInteractor : NetworkBehaviour
 {
-    [Header("Interaction Settings")]
     public float interactRange = 2.0f;
     public LayerMask interactLayer;
 
     private KillerInput input;
     private KillerState state;
-    private Animator animator;
     private IInteractable currentTarget;
-
-    private NetworkAnimator networkAnimator;
 
     void Awake()
     {
         input = GetComponent<KillerInput>();
         state = GetComponent<KillerState>();
-        animator = GetComponentInChildren<Animator>();
-        networkAnimator = GetComponent<NetworkAnimator>(); // 추가
     }
 
     void Update()
     {
         if (!isLocalPlayer) return;
-        // 1. 앞에 상호작용 대상이 있는지 탐색
         SearchTarget();
 
-        // 2. Hit 상태가 아닐 때만 상호작용 시도
         if (state.CurrentCondition == KillerCondition.Idle && input.IsInteractPressed)
         {
             if (currentTarget != null)
             {
-                // currentTarget.gameObject 대신, 인터페이스를 구현하고 있는 실제 컴포넌트의 gameObject를 찾습니다.
                 GameObject targetObj = ((MonoBehaviour)currentTarget).gameObject;
+
+                // [로컬 반응 추가] 상태에 따른 트리거를 미리 당겨 동기화 속도를 맞춥니다.
+                if (targetObj.CompareTag("Pallet")) state.PlayTrigger(KillerCondition.Breaking);
+                else if (targetObj.CompareTag("Window")) state.PlayTrigger(KillerCondition.Vaulting);
+
                 CmdInteract(targetObj);
             }
         }
@@ -48,50 +43,37 @@ public class KillerInteractor : NetworkBehaviour
         {
             currentTarget = hit.collider.GetComponent<IInteractable>();
         }
-        else
-        {
-            currentTarget = null;
-        }
-    }
-
-    // [중요] 판자가 살인마를 때릴 때 호출하는 함수
-    public void ApplyHitStun(float duration)
-    {
-        if (state.CurrentCondition == KillerCondition.Hit) return;
-
-        state.ChangeState(KillerCondition.Hit);
-        if (networkAnimator != null) networkAnimator.SetTrigger("Hit");
-        StartCoroutine(ResetStateRoutine(duration));
-    }
-
-    private IEnumerator ResetStateRoutine(float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        state.ChangeState(KillerCondition.Idle);
+        else currentTarget = null;
     }
 
     [Command]
     private void CmdInteract(GameObject target)
     {
+        if (state.CurrentCondition != KillerCondition.Idle) return;
+
         IInteractable interactable = target.GetComponent<IInteractable>();
+        if (interactable == null) return;
 
-        if (interactable != null)
-        {
-            // 1. 대상이 판자인지 창틀인지 판별합니다.
-            if (target.CompareTag("Pallet")) // 판자일 때
-            {
-                state.ChangeState(KillerCondition.Breaking);
-                networkAnimator.SetTrigger("Break");
-            }
-            else if (target.CompareTag("Window")) // 창틀일 때
-            {
-                // KillerCondition에 Vaulting 상태가 있으므로 이를 활용합니다.
-                state.ChangeState(KillerCondition.Vaulting);
-                networkAnimator.SetTrigger("Vault"); // 창틀 넘기 트리거 실행
-            }
+        if (target.CompareTag("Pallet")) state.ChangeState(KillerCondition.Breaking);
+        else if (target.CompareTag("Window")) state.ChangeState(KillerCondition.Vaulting);
 
-            // 2. 상호작용 시작
-            interactable.BeginInteract(this.gameObject);
-        }
+        interactable.BeginInteract(this.gameObject);
+    }
+
+    // Pallet에서 호출하는 스턴 함수
+    public void ApplyHitStun(float duration)
+    {
+        if (!isServer) return;
+        if (state.CurrentCondition == KillerCondition.Hit) return;
+
+        state.ChangeState(KillerCondition.Hit);
+        StartCoroutine(ResetHitStunRoutine(duration));
+    }
+
+    private System.Collections.IEnumerator ResetHitStunRoutine(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (state.CurrentCondition == KillerCondition.Hit)
+            state.ChangeState(KillerCondition.Idle);
     }
 }

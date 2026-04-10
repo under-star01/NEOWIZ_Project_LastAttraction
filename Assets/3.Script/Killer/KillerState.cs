@@ -1,45 +1,68 @@
 using UnityEngine;
 using Mirror;
 
-public enum KillerCondition { Idle, Lunging, Recovering, Hit, Vaulting, Breaking, Carrying }
+public enum KillerCondition { Idle, Lunging, Recovering, Hit, Vaulting, Breaking, Incage }
 
 public class KillerState : NetworkBehaviour
 {
-    // [SyncVar]를 붙여야 서버에서 바꾼 상태가 모든 클라이언트에게 전달됩니다.
+    private Animator animator;
+    private NetworkAnimator networkAnimator;
+
+    [Header("Sync Variables")]
     [SyncVar(hook = nameof(OnConditionChanged))]
     private KillerCondition currentCondition = KillerCondition.Idle;
 
     public KillerCondition CurrentCondition => currentCondition;
-    // 런지 중이거나 평상시일 때만 이동 가능
-    public bool CanMove => 
-        CurrentCondition == KillerCondition.Idle || 
-        CurrentCondition == KillerCondition.Lunging ||
-        CurrentCondition == KillerCondition.Recovering;
 
-    // 스턴 상태가 아닐 때만 마우스 회전(시야) 가능
-    public bool CanLook => 
-        CurrentCondition != KillerCondition.Hit &&
-        CurrentCondition != KillerCondition.Vaulting &&
-        CurrentCondition != KillerCondition.Breaking;
+    public bool CanMove =>
+        currentCondition == KillerCondition.Idle ||
+        currentCondition == KillerCondition.Lunging ||
+        currentCondition == KillerCondition.Recovering;
 
-    // --- [KillerCombat에서 사용하는 프로퍼티] ---
-    // 아무것도 안 하는 평상시에만 공격 시작 가능
-    public bool CanAttack => CurrentCondition == KillerCondition.Idle;
+    public bool CanLook =>
+        currentCondition != KillerCondition.Hit &&
+        currentCondition != KillerCondition.Vaulting &&
+        currentCondition != KillerCondition.Breaking &&
+        currentCondition != KillerCondition.Incage;
 
-    // 공격 후딜레이(Recovering) 상태인지 확인
-    public bool IsInAttackAnimation => CurrentCondition == KillerCondition.Recovering;
+    public bool CanAttack => currentCondition == KillerCondition.Idle;
 
-    // 상태 변경 함수
+    private void Awake()
+    {
+        animator = GetComponentInChildren<Animator>();
+        networkAnimator = GetComponent<NetworkAnimator>();
+    }
+
     [Server]
     public void ChangeState(KillerCondition newState)
     {
         if (currentCondition == newState) return;
         currentCondition = newState;
+
+        // [중요] 데디케이트 서버는 화면이 없으므로 트리거를 당길 필요가 없지만,
+        // NetworkAnimator를 통해 트리거를 전파하고 싶다면 여기서 호출할 수 있습니다.
+        // 하지만 우리는 더 확실한 SyncVar Hook 방식을 사용합니다.
     }
 
-    // 상태가 변했을 때 로그를 찍거나 특정 처리를 하고 싶다면 훅(Hook)을 사용합니다.
     private void OnConditionChanged(KillerCondition oldState, KillerCondition newState)
     {
-        Debug.Log($"[KillerState] 상태 변경: {oldState} -> {newState}");
+        // 서버(데디케이트)는 실행하지 않음
+        if (isServer && !isClient) return;
+
+        // 모든 클라이언트(나 포함)가 상태 변화를 감지하면 트리거를 실행합니다.
+        PlayTrigger(newState);
+    }
+
+    public void PlayTrigger(KillerCondition condition)
+    {
+        if (animator == null) return;
+
+        switch (condition)
+        {
+            case KillerCondition.Lunging: animator.SetTrigger("Attack"); break;
+            case KillerCondition.Hit: animator.SetTrigger("Hit"); break;
+            case KillerCondition.Breaking: animator.SetTrigger("Break"); break;
+            case KillerCondition.Vaulting: animator.SetTrigger("Vault"); break;
+        }
     }
 }
