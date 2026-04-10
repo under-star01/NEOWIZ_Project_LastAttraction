@@ -654,7 +654,7 @@ Transform:
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1, y: 1, z: -4.5}
+  m_LocalPosition: {x: 0, y: 1, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3034,6 +3034,7 @@ MonoBehaviour:
   killerButton: {fileID: 374057172}
   survivorButton: {fileID: 1226449983}
   loadingPanel: {fileID: 250621163}
+  canvas: {fileID: 1770418629}
 --- !u!4 &1340424656
 Transform:
   m_ObjectHideFlags: 0
