@@ -130,8 +130,8 @@ public class KillerInteractor : NetworkBehaviour
     // Pallet에서 호출하는 스턴 함수
     public void ApplyHitStun(float duration)
     {
-        //if (!isServer) return;
-        //if (state.CurrentCondition == KillerCondition.Hit) return;
+        if (!isServer) return;
+        if (state.CurrentCondition == KillerCondition.Hit) return;
         Debug.Log($"<color=red>[KillerHit]</color> 판자에 맞음! 스턴 시간: {duration}");
         state.ChangeState(KillerCondition.Hit);
         StartCoroutine(ResetHitStunRoutine(duration));
