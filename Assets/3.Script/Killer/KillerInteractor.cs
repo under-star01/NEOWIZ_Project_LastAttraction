@@ -51,6 +51,7 @@ public class KillerInteractor : NetworkBehaviour
         {
             // 3. 자식 콜라이더를 맞췄을 때 부모의 스크립트를 찾도록 GetComponentInParent를 사용합니다.
             currentTarget = hit.collider.GetComponentInParent<IInteractable>();
+            Debug.DrawRay(rayOrigin, transform.forward * interactRange, Color.red);
         }
         else
         {
