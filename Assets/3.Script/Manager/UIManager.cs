@@ -9,6 +9,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Button killerButton;
     [SerializeField] private Button survivorButton;
     [SerializeField] private GameObject loadingPanel;
+    [SerializeField] private GameObject startButton;
 
     private void Awake()
     {
@@ -72,5 +73,11 @@ public class UIManager : MonoBehaviour
     {
         if (loadingPanel != null)
             loadingPanel.SetActive(isActive);
+    }
+
+    public void DisableCanvas()
+    {
+        if (startButton != null)
+            startButton.SetActive(false);
     }
 }

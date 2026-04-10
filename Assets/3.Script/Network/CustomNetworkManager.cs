@@ -484,6 +484,7 @@ public class CustomNetworkManager : NetworkManager
         localJoinRole = (JoinRole)msg.role;
 
         UIManager.Instance?.ShowLoading(false);
+        UIManager.Instance?.DisableCanvas();
 
         Debug.Log($"[CustomNetworkManager] 입장 완료 - Role: {localJoinRole}, Port: {msg.port}");
     }

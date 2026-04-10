@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 7977360239449139302}
   m_Layer: 8
   m_Name: Modeling
-  m_TagString: Untagged
+  m_TagString: Killer
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -47,7 +47,7 @@ Animator:
   m_Controller: {fileID: 9100000, guid: 37043d23f0318af4fbe18baf394fab18, type: 2}
   m_CullingMode: 1
   m_UpdateMode: 0
-  m_ApplyRootMotion: 1
+  m_ApplyRootMotion: 0
   m_LinearVelocityBlending: 0
   m_StabilizeFeet: 0
   m_AnimatePhysics: 0
@@ -2692,7 +2692,7 @@ GameObject:
   - component: {fileID: 5939102808237091577}
   m_Layer: 8
   m_Name: CameraRoot
-  m_TagString: Untagged
+  m_TagString: Killer
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -2822,7 +2822,7 @@ GameObject:
   - component: {fileID: 6313528009145044576}
   m_Layer: 8
   m_Name: Camera
-  m_TagString: Untagged
+  m_TagString: Killer
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -9300,7 +9300,7 @@ GameObject:
   - component: {fileID: 7609542204705704420}
   m_Layer: 8
   m_Name: AttackPoint
-  m_TagString: Untagged
+  m_TagString: Killer
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -11436,7 +11436,7 @@ MonoBehaviour:
     m_Bits: 512
   obstacleMask:
     serializedVersion: 2
-    m_Bits: 1024
+    m_Bits: 7496
 --- !u!114 &7075201297679001473
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11496,6 +11496,9 @@ MonoBehaviour:
   interactLayer:
     serializedVersion: 2
     m_Bits: 1
+  survivorLayer:
+    serializedVersion: 2
+    m_Bits: 2112
 --- !u!114 &835159930052555109
 MonoBehaviour:
   m_ObjectHideFlags: 0
