@@ -1445,7 +1445,7 @@ MonoBehaviour:
   onlineScene: 
   offlineSceneLoadDelay: 0
   transport: {fileID: 746813350}
-  networkAddress: 3.37.88.71
+  networkAddress: 43.200.172.32
   maxConnections: 5
   disconnectInactiveConnections: 0
   disconnectInactiveTimeout: 60
@@ -2249,6 +2249,7 @@ MonoBehaviour:
   killerButton: {fileID: 374057172}
   survivorButton: {fileID: 1226449983}
   loadingPanel: {fileID: 250621163}
+  startButton: {fileID: 0}
 --- !u!4 &1340424656
 Transform:
   m_ObjectHideFlags: 0
