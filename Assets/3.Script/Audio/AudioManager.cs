@@ -2,7 +2,10 @@ using System.Collections.Generic;
 using Mirror;
 using UnityEngine;
 
-// 2d인지 3d인지 킬러만인지 생존자인지 모두 들을지 판정
+// 실제로 소리를 재생하는 매니저
+// - 2D 재생
+// - 3D 재생
+// - 킬러만 / 생존자만 / 모두 들을지 판정
 public class AudioManager : MonoBehaviour
 {
     public static AudioManager Instance;
@@ -13,15 +16,25 @@ public class AudioManager : MonoBehaviour
     [Header("2D 사운드 재생용 AudioSource")]
     [SerializeField] private AudioSource audioSource2D;
 
-    // 빠르게 찾기 위해 Dictionary 사용
+    // 오디오를 빠르게 찾기 위한 Dictionary
     private Dictionary<AudioKey, AudioData> audioDataMap = new Dictionary<AudioKey, AudioData>();
 
     private void Awake()
     {
+        // 싱글톤 중복 방지
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
         Instance = this;
 
         // 인스펙터에서 넣은 오디오들을 Dictionary에 저장
         audioDataMap.Clear();
+
+        if (audioDataList == null)
+            return;
 
         for (int i = 0; i < audioDataList.Length; i++)
         {
@@ -51,6 +64,7 @@ public class AudioManager : MonoBehaviour
         if (!audioDataMap.TryGetValue(key, out AudioData data))
             return;
 
+        // 2D / 3D 방식에 따라 재생
         if (dimension == AudioDimension.Sound2D)
             Play2DAudio(data);
         else
@@ -58,18 +72,51 @@ public class AudioManager : MonoBehaviour
     }
 
     // 2D 소리 재생
+    // 버튼 소리, UI 소리, 개인 알림음 등에 사용
     private void Play2DAudio(AudioData data)
     {
+        if (data == null)
+            return;
+
         if (audioSource2D == null)
+            return;
+
+        if (data.clip == null)
             return;
 
         audioSource2D.PlayOneShot(data.clip, data.volume);
     }
 
     // 3D 소리 재생
+    // 월드 위치에서 나는 소리
+    // PlayClipAtPoint 대신 직접 AudioSource를 만들어서
+    // 거리 설정(min/max distance)을 같이 적용할 수 있게 함
     private void Play3DAudio(AudioData data, Vector3 worldPosition)
     {
-        AudioSource.PlayClipAtPoint(data.clip, worldPosition, data.volume);
+        if (data == null)
+            return;
+
+        if (data.clip == null)
+            return;
+
+        GameObject tempAudioObject = new GameObject("3D_Audio_" + data.key);
+        tempAudioObject.transform.position = worldPosition;
+
+        AudioSource source = tempAudioObject.AddComponent<AudioSource>();
+        source.clip = data.clip;
+        source.volume = data.volume;
+
+        // 3D 사운드 설정
+        source.spatialBlend = 1f;
+        source.minDistance = data.minDistance;
+        source.maxDistance = data.maxDistance;
+        source.rolloffMode = AudioRolloffMode.Linear;
+        source.playOnAwake = false;
+
+        source.Play();
+
+        // 재생 끝나면 임시 오브젝트 삭제
+        Destroy(tempAudioObject, data.clip.length + 0.1f);
     }
 
     // 현재 이 클라이언트가 이 소리를 들어야 하는지 판정
@@ -88,6 +135,8 @@ public class AudioManager : MonoBehaviour
             return false;
 
         GameObject localPlayerObject = NetworkClient.localPlayer.gameObject;
+        if (localPlayerObject == null)
+            return false;
 
         if (listenerTarget == AudioListenerTarget.KillerOnly)
             return localPlayerObject.CompareTag("Killer");
@@ -99,14 +148,22 @@ public class AudioManager : MonoBehaviour
     }
 
     // 로컬 클라이언트에서만 바로 소리를 재생할 때 쓰는 편의 함수
-    // 예: 버튼 클릭음, 내 전용 경고음
-    public static void PlayLocalAudio(AudioKey key, AudioDimension dimension = AudioDimension.Sound2D, Vector3? worldPosition = null)
+    // 예: 버튼 클릭음, UI 효과음, 내 전용 경고음
+    public static void PlayLocalAudio(
+        AudioKey key,
+        AudioDimension dimension = AudioDimension.Sound2D,
+        Vector3? worldPosition = null)
     {
         if (AudioManager.Instance == null)
             return;
 
         Vector3 playPosition = worldPosition ?? Vector3.zero;
 
-        AudioManager.Instance.PlayAudio(key, AudioListenerTarget.LocalOnly, dimension, playPosition);
+        AudioManager.Instance.PlayAudio(
+            key,
+            AudioListenerTarget.LocalOnly,
+            dimension,
+            playPosition
+        );
     }
 }
