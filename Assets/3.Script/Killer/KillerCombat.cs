@@ -16,7 +16,7 @@ public class KillerCombat : NetworkBehaviour
     public LayerMask obstacleLayer;
 
     [Header("Animation Settings")]
-    public float baseAttackAnimationLength = 3.333f;
+    public float baseAttackAnimationLength = 2.666f;
 
     private KillerInput input;
     private KillerState state;
