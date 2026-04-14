@@ -9,7 +9,8 @@ public enum SurvivorCondition
     Injured,      // ºÎ»ó1
     Downed,       // ´Ù¿î2
     Imprisoned,   // °¨¿Á3
-    Dead          // »ç¸Á4
+    Dead,         // »ç¸Á4
+    Stunned       // ±âÀý5
 }
 
 public class SurvivorState : NetworkBehaviour
@@ -421,5 +422,39 @@ public class SurvivorState : NetworkBehaviour
             return;
 
         animator.SetInteger("Condition", (int)currentCondition);
+    }
+
+    [Server]
+    public void ApplyTrapStun(float duration)
+    {
+        if (IsDowned || IsDead || IsImprisoned) return;
+
+        StartCoroutine(TrapStunRoutine(duration));
+    }
+
+    private IEnumerator TrapStunRoutine(float duration)
+    {
+        SurvivorCondition previousCondition = currentCondition;
+        currentCondition = SurvivorCondition.Stunned;
+
+        RpcSetTrapLock(true);
+
+        yield return new WaitForSeconds(duration);
+
+        if(currentCondition == SurvivorCondition.Stunned)
+        {
+            currentCondition = previousCondition;
+            RpcSetTrapLock(false);
+        }
+    }
+
+    [ClientRpc]
+    private void RpcSetTrapLock(bool isLocked)
+    {
+        if (move != null)
+        {
+            move.SetMoveLock(isLocked);
+            if (isLocked) move.StopAnimation();
+        }
     }
 }

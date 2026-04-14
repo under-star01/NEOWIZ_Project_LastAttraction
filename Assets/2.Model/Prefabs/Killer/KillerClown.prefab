@@ -11429,7 +11429,7 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  trapPrefab: {fileID: 2647317376667800383, guid: e1ea0471b3c6e0b48b92bcc5f0bd32db, type: 3}
+  trapPrefab: {fileID: 7681559504342553459, guid: a07f6da5260b7bb4e9af254a3034f3c7, type: 3}
   maxInstallDist: 3
   groundMask:
     serializedVersion: 2
