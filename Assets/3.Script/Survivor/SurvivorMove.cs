@@ -4,12 +4,12 @@ using UnityEngine;
 public class SurvivorMove : NetworkBehaviour
 {
     [Header("참조")]
-    [SerializeField] private Transform cameraYawRoot;   // 좌우 회전용 루트
-    [SerializeField] private Transform cameraPitchRoot; // 상하 회전용 루트
-    [SerializeField] private Camera playerCamera;       // 로컬 플레이어 카메라
-    [SerializeField] private AudioListener playerListener; // 로컬 플레이어 오디오 리스너
-    [SerializeField] private Transform modelRoot;       // 캐릭터 모델 회전용
-    [SerializeField] private Animator animator;         // 애니메이터
+    [SerializeField] private Transform cameraYawRoot;
+    [SerializeField] private Transform cameraPitchRoot;
+    [SerializeField] private Camera playerCamera;
+    [SerializeField] private AudioListener playerListener;
+    [SerializeField] private Transform modelRoot;
+    [SerializeField] private Animator animator;
 
     [Header("속도")]
     [SerializeField] private float walkSpeed = 2.3f;
@@ -33,59 +33,44 @@ public class SurvivorMove : NetworkBehaviour
     private SurvivorInput input;
     private SurvivorInteractor interactor;
     private SurvivorState state;
+    private SurvivorActionState actionState;
+    private SurvivorMoveState moveState;
 
-    // 로컬 카메라 회전값
     private float localYaw;
     private float localPitch;
-
-    // 서버 실제 이동 처리용 값
     private float yVelocity;
 
-    // 이동 잠금 여부
-    // 중요:
-    // 이동은 서버에서 처리하므로 이 값도 서버 쪽에 반영되어야 진짜로 움직임이 막힌다.
+    // 외부 상호작용이나 연출에서 이동을 잠글 때 사용
     private bool isMoveLocked;
 
-    // 클라이언트가 서버에 보낸 최신 입력값 저장용
-    // 서버는 FixedUpdate에서 이 값을 사용해서 실제 이동을 처리한다.
+    // 로컬 입력을 서버에 보내서 서버가 실제 이동 처리
     private Vector2 serverMoveInput;
     private bool serverWantsRun;
     private bool serverWantsCrouch;
     private float serverYaw;
     private float serverPitch;
 
-    // 원격 플레이어 표시용 동기화 값
+    // 원격 플레이어 시점/모델 회전 동기화용
     [SyncVar] private float syncedYaw;
     [SyncVar] private float syncedPitch;
     [SyncVar] private float syncedModelYaw;
 
-    [SyncVar] private float syncedMoveSpeed;
-    [SyncVar] private bool syncedIsCrouching;
-    [SyncVar] private bool syncedIsDowned;
-
-    // 외부에서 이동 잠금 on/off 할 때 호출
+    // 이동 잠금 on/off
     public void SetMoveLock(bool value)
     {
-        // 로컬에서는 즉시 반영
-        // 그래야 체감상 바로 잠기는 느낌이 난다.
         isMoveLocked = value;
 
-        // 클라이언트 플레이어라면 서버에도 전달
-        // 이게 없으면 서버는 계속 이동 허용 상태라 실제로는 움직여질 수 있다.
         if (isLocalPlayer && !isServer)
-        {
             CmdSetMoveLock(value);
-        }
     }
 
-    // 로컬에서 요청한 이동 잠금을 서버에도 반영
     [Command]
     private void CmdSetMoveLock(bool value)
     {
         isMoveLocked = value;
     }
 
-    // 플레이어를 특정 방향으로 바라보게 할 때 사용
+    // 특정 방향을 바라보게 할 때 사용
     public void FaceDirection(Vector3 dir)
     {
         dir.y = 0f;
@@ -93,13 +78,11 @@ public class SurvivorMove : NetworkBehaviour
         if (dir.sqrMagnitude <= 0.001f)
             return;
 
-        // 서버면 바로 처리 후 전체 클라에 반영
         if (isServer)
         {
             ApplyFaceDirection(dir.normalized);
             RpcFaceDirection(dir.normalized);
         }
-        // 로컬 플레이어면 서버에 요청
         else if (isLocalPlayer)
         {
             CmdFaceDirection(dir.normalized);
@@ -119,21 +102,19 @@ public class SurvivorMove : NetworkBehaviour
     [ClientRpc]
     private void RpcFaceDirection(Vector3 dir)
     {
-        // 서버는 이미 직접 적용했으니 중복 적용 방지
         if (isServer)
             return;
 
         ApplyFaceDirection(dir.normalized);
     }
 
-    // 실제 방향 적용
     private void ApplyFaceDirection(Vector3 dir)
     {
-        if (modelRoot != null)
-        {
-            modelRoot.rotation = Quaternion.LookRotation(dir);
-            syncedModelYaw = modelRoot.eulerAngles.y;
-        }
+        if (modelRoot == null)
+            return;
+
+        modelRoot.rotation = Quaternion.LookRotation(dir);
+        syncedModelYaw = modelRoot.eulerAngles.y;
     }
 
     private void Awake()
@@ -142,6 +123,8 @@ public class SurvivorMove : NetworkBehaviour
         input = GetComponent<SurvivorInput>();
         interactor = GetComponent<SurvivorInteractor>();
         state = GetComponent<SurvivorState>();
+        actionState = GetComponent<SurvivorActionState>();
+        moveState = GetComponent<SurvivorMoveState>();
 
         if (animator == null && modelRoot != null)
             animator = modelRoot.GetComponentInChildren<Animator>();
@@ -149,8 +132,8 @@ public class SurvivorMove : NetworkBehaviour
         if (animator != null)
             animator.applyRootMotion = false;
 
-        // 시작할 때는 모든 카메라/리스너 꺼두고
-        // 로컬 플레이어일 때만 켜준다.
+        // 시작 시 카메라와 오디오는 모두 꺼두고
+        // 로컬 플레이어만 켠다
         if (playerCamera != null)
             playerCamera.enabled = false;
 
@@ -162,7 +145,6 @@ public class SurvivorMove : NetworkBehaviour
     {
         base.OnStartLocalPlayer();
 
-        // 내 플레이어만 카메라/오디오 사용
         if (playerCamera != null)
             playerCamera.enabled = true;
 
@@ -177,7 +159,6 @@ public class SurvivorMove : NetworkBehaviour
     {
         base.OnStartClient();
 
-        // 내 플레이어가 아니면 카메라/오디오 꺼둠
         if (!isLocalPlayer)
         {
             if (playerCamera != null)
@@ -192,7 +173,6 @@ public class SurvivorMove : NetworkBehaviour
     {
         if (isLocalPlayer)
         {
-            // 로컬 플레이어는 카메라 회전 처리 + 입력 서버 전송
             UpdateLocalLook();
             SendInputToServer();
             ApplyLocalCamera();
@@ -200,23 +180,20 @@ public class SurvivorMove : NetworkBehaviour
         }
         else
         {
-            // 원격 플레이어는 동기화된 값으로만 표시
             ApplyRemoteLook();
-            ApplyRemoteAnimator();
             ApplyModelRotation();
         }
     }
 
     private void FixedUpdate()
     {
-        // 실제 이동은 서버에서만 처리
         if (!isServer)
             return;
 
         ServerTickMovement();
     }
 
-    // 로컬 마우스 회전값 누적
+    // 로컬 마우스 입력으로 시야 회전 계산
     private void UpdateLocalLook()
     {
         if (input == null)
@@ -229,7 +206,7 @@ public class SurvivorMove : NetworkBehaviour
         localPitch = Mathf.Clamp(localPitch, minPitch, maxPitch);
     }
 
-    // 로컬 카메라 적용
+    // 내 카메라에 로컬 시야 적용
     private void ApplyLocalCamera()
     {
         if (cameraYawRoot != null)
@@ -239,7 +216,7 @@ public class SurvivorMove : NetworkBehaviour
             cameraPitchRoot.localRotation = Quaternion.Euler(localPitch, 0f, 0f);
     }
 
-    // 원격 플레이어 회전 표시
+    // 다른 클라이언트 플레이어 시야 반영
     private void ApplyRemoteLook()
     {
         if (cameraYawRoot != null)
@@ -249,7 +226,7 @@ public class SurvivorMove : NetworkBehaviour
             cameraPitchRoot.localRotation = Quaternion.Euler(syncedPitch, 0f, 0f);
     }
 
-    // 모델 회전 적용
+    // 모델이 바라보는 방향 반영
     private void ApplyModelRotation()
     {
         if (modelRoot == null)
@@ -260,19 +237,7 @@ public class SurvivorMove : NetworkBehaviour
         modelRoot.eulerAngles = euler;
     }
 
-    // 원격 플레이어 애니메이터 적용
-    private void ApplyRemoteAnimator()
-    {
-        if (animator == null)
-            return;
-
-        // MoveSpeed는 약간 부드럽게 보간
-        animator.SetFloat("MoveSpeed", syncedMoveSpeed, 0.1f, Time.deltaTime);
-        animator.SetBool("IsCrouching", syncedIsCrouching);
-        animator.SetBool("IsDowned", syncedIsDowned);
-    }
-
-    // 로컬 입력을 서버에 전송
+    // 로컬 입력을 서버로 전달
     private void SendInputToServer()
     {
         if (input == null)
@@ -296,12 +261,11 @@ public class SurvivorMove : NetworkBehaviour
         serverYaw = yaw;
         serverPitch = pitch;
 
-        // 원격 플레이어 표시용 회전값 동기화
         syncedYaw = yaw;
         syncedPitch = pitch;
     }
 
-    // 서버에서 실제 이동 처리
+    // 서버에서 실제 이동 상태를 판단하고 이동 처리
     [Server]
     private void ServerTickMovement()
     {
@@ -309,27 +273,29 @@ public class SurvivorMove : NetworkBehaviour
             return;
 
         bool isDowned = state != null && state.IsDowned;
-        bool isBusy = state != null && state.IsBusy;
         bool isDead = state != null && state.IsDead;
+        bool isBusy = actionState != null && actionState.IsBusy;
 
-        // 이동 잠김 상태거나 다운 연출 중이거나 사망 상태면 이동 금지
-        // 감옥 상태는 여기서 막지 않는다.
-        // 감옥에서는 "이동은 되지만, 감옥 콜라이더 때문에 못 나감" 구조로 간다.
+        // 이동 잠김 / 행동 제한 / 사망 상태면 실제 이동은 막고
+        // 중력만 적용
         if (isMoveLocked || isBusy || isDead)
         {
             ApplyGravityOnlyServer();
-            UpdateAnimatorServer(0f, false, isDowned);
+
+            if (moveState != null)
+                moveState.SetMoveState(SurvivorLocomotionState.Idle, false);
+
             return;
         }
 
-        // 다운 상태면 기어가기 이동
+        // 다운 상태면 기어가기 전용 이동 사용
         if (isDowned)
         {
             CrawlMoveServer(serverMoveInput, serverYaw);
             return;
         }
 
-        // 상호작용 중이면 앉기 금지
+        // Hold 상호작용 중일 때는 새로 앉기 시작 못 하게 막음
         bool canCrouch = interactor == null || !interactor.IsInteracting;
         bool isCrouching = canCrouch && serverWantsCrouch;
 
@@ -341,7 +307,7 @@ public class SurvivorMove : NetworkBehaviour
         MoveServer(serverMoveInput, serverWantsRun, isCrouching, serverYaw);
     }
 
-    // 일반 이동
+    // 일반 이동 처리
     [Server]
     private void MoveServer(Vector2 moveInput, bool wantsRun, bool isCrouching, float yaw)
     {
@@ -358,25 +324,11 @@ public class SurvivorMove : NetworkBehaviour
         bool isRunning = isMoving && !isCrouching && wantsRun;
 
         float speed = walkSpeed;
-        float animSpeed = 0f;
 
         if (isCrouching)
-        {
             speed = crouchSpeed;
-
-            if (isMoving)
-                animSpeed = 0.25f;
-        }
         else if (isRunning)
-        {
             speed = runSpeed;
-            animSpeed = 1f;
-        }
-        else if (isMoving)
-        {
-            speed = walkSpeed;
-            animSpeed = 0.5f;
-        }
 
         if (controller.isGrounded)
             yVelocity = -1f;
@@ -389,10 +341,29 @@ public class SurvivorMove : NetworkBehaviour
         controller.Move(finalMove * Time.fixedDeltaTime);
 
         RotateModelServer(move, isMoving);
-        UpdateAnimatorServer(animSpeed, isCrouching, false);
+
+        // 애니메이션 상태 반영
+        // 앉은 상태는 움직이지 않아도 Crouch 상태를 유지해야
+        // Crouch Idle이 나오게 된다
+        if (moveState != null)
+        {
+            if (isCrouching)
+            {
+                moveState.SetMoveState(SurvivorLocomotionState.Crouch, isMoving);
+            }
+            else
+            {
+                if (!isMoving)
+                    moveState.SetMoveState(SurvivorLocomotionState.Idle, false);
+                else if (isRunning)
+                    moveState.SetMoveState(SurvivorLocomotionState.Run, true);
+                else
+                    moveState.SetMoveState(SurvivorLocomotionState.Walk, true);
+            }
+        }
     }
 
-    // 다운 상태 이동
+    // 다운 상태 이동 처리
     [Server]
     private void CrawlMoveServer(Vector2 moveInput, float yaw)
     {
@@ -429,12 +400,10 @@ public class SurvivorMove : NetworkBehaviour
             syncedModelYaw = modelRoot.eulerAngles.y;
         }
 
-        float animSpeed = 0f;
-
-        if (isMoving)
-            animSpeed = 0.2f;
-
-        UpdateAnimatorServer(animSpeed, false, true);
+        // 다운 상태도 Crawl 상태로 유지한 채
+        // 움직임 여부에 따라 Down Idle / Crawl이 갈리게 함
+        if (moveState != null)
+            moveState.SetMoveState(SurvivorLocomotionState.Crawl, isMoving);
     }
 
     // 이동 방향으로 모델 회전
@@ -454,7 +423,7 @@ public class SurvivorMove : NetworkBehaviour
         syncedModelYaw = modelRoot.eulerAngles.y;
     }
 
-    // 이동은 못 하더라도 중력은 계속 적용
+    // 이동 못 할 때도 중력은 계속 적용
     [Server]
     private void ApplyGravityOnlyServer()
     {
@@ -470,7 +439,7 @@ public class SurvivorMove : NetworkBehaviour
         controller.Move(gravityMove * Time.fixedDeltaTime);
     }
 
-    // 현재 자세에 맞게 CharacterController 크기 변경
+    // 앉기/서기 시 CharacterController 크기 변경
     [Server]
     private void SetSizeServer(float height, Vector3 center)
     {
@@ -478,23 +447,7 @@ public class SurvivorMove : NetworkBehaviour
         controller.center = center;
     }
 
-    // 서버에서 애니메이터 상태 갱신 + 원격 표시용 SyncVar 갱신
-    [Server]
-    private void UpdateAnimatorServer(float targetMoveSpeed, bool isCrouching, bool isDowned)
-    {
-        syncedMoveSpeed = targetMoveSpeed;
-        syncedIsCrouching = isCrouching;
-        syncedIsDowned = isDowned;
-
-        if (animator == null)
-            return;
-
-        animator.SetFloat("MoveSpeed", targetMoveSpeed, 0.1f, Time.deltaTime);
-        animator.SetBool("IsCrouching", isCrouching);
-        animator.SetBool("IsDowned", isDowned);
-    }
-
-    // 애니메이션 트리거 실행
+    // 트리거형 애니메이션 재생
     public void PlayAnimation(string triggerName)
     {
         if (isServer)
@@ -532,7 +485,7 @@ public class SurvivorMove : NetworkBehaviour
         animator.SetTrigger(triggerName);
     }
 
-    // 볼트 상태 on/off
+    // 볼트 상태 bool 제어
     public void SetVaulting(bool value)
     {
         if (isServer)
@@ -568,7 +521,7 @@ public class SurvivorMove : NetworkBehaviour
             animator.SetBool("IsVaulting", value);
     }
 
-    // 조사/힐 같은 searching 상태 on/off
+    // 조사 / 힐 / 감옥 같은 전신 상호작용 bool 제어
     public void SetSearching(bool value)
     {
         if (isServer)
@@ -604,24 +557,24 @@ public class SurvivorMove : NetworkBehaviour
             animator.SetBool("IsSearching", value);
     }
 
-    // 이동 애니메이션 정지
+    // 이동 애니메이션을 강제로 기본 Idle로 돌리고 싶을 때 사용
     public void StopAnimation()
     {
-        bool isDowned = state != null && state.IsDowned;
-
         if (isServer)
         {
-            UpdateAnimatorServer(0f, false, isDowned);
+            if (moveState != null)
+                moveState.SetMoveState(SurvivorLocomotionState.Idle, false);
         }
         else if (isLocalPlayer)
         {
-            CmdStopAnimation(isDowned);
+            CmdStopAnimation();
         }
     }
 
     [Command]
-    private void CmdStopAnimation(bool isDowned)
+    private void CmdStopAnimation()
     {
-        UpdateAnimatorServer(0f, false, isDowned);
+        if (moveState != null)
+            moveState.SetMoveState(SurvivorLocomotionState.Idle, false);
     }
 }
