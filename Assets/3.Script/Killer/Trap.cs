@@ -41,7 +41,6 @@ public class Trap : NetworkBehaviour
 
         // 생존자에게 스턴 및 피격 적용
         survivor.ApplyTrapStun(stunDuration);
-        survivor.TakeHit(); // 부상 상태로 만듦
 
         // 애니메이션 동기화
         RpcPlayTriggerEffects();
