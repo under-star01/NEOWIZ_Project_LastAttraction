@@ -10,20 +10,21 @@ public class SurvivorInteractor : NetworkBehaviour
 
     private SurvivorInput input;
     private SurvivorState state;
+    private SurvivorActionState actionState;
 
     // 현재 선택된 상호작용 대상
     private IInteractable currentInteractable;
 
-    // 현재 실제로 진행 중인 상호작용 대상
+    // 실제 진행 중인 상호작용 대상
     private IInteractable activeInteractable;
 
-    // Hold 타입 상호작용 중인지
+    // Hold 상호작용 중인지
     private bool isInteracting;
 
-    // 현재 ProgressUI를 사용하는 오브젝트
+    // 현재 ProgressUI를 쓰는 오브젝트
     private object progressOwner;
 
-    // 범위 안에 있는 상호작용 대상 목록
+    // 범위 안 상호작용 대상 목록
     private readonly List<IInteractable> nearbyInteractables = new List<IInteractable>();
 
     public bool IsInteracting => isInteracting;
@@ -48,6 +49,7 @@ public class SurvivorInteractor : NetworkBehaviour
     {
         input = GetComponent<SurvivorInput>();
         state = GetComponent<SurvivorState>();
+        actionState = GetComponent<SurvivorActionState>();
     }
 
     public override void OnStartClient()
@@ -86,11 +88,16 @@ public class SurvivorInteractor : NetworkBehaviour
         if (progressUI == null)
             BindUI();
 
-        // 다운 / 다운 피격 연출 / 사망이면 상호작용 강제 종료
-        if (state != null && (state.IsDowned || state.IsBusy || state.IsDead))
+        // 다운 / 행동 제한 / 사망이면 강제 종료
+        if (state != null)
         {
-            ClearForce();
-            return;
+            bool isBusy = actionState != null && actionState.IsBusy;
+
+            if (state.IsDowned || isBusy || state.IsDead)
+            {
+                ClearForce();
+                return;
+            }
         }
 
         // 상호작용 중이 아닐 때만 앉기 상태로 시작 막기
@@ -158,10 +165,10 @@ public class SurvivorInteractor : NetworkBehaviour
         }
     }
 
-    // 범위 안 목록에서 현재 선택 대상 결정
+    // 범위 안 목록에서 가장 우선순위 높은 대상 선택
     private void RefreshCurrentInteractable()
     {
-        // 이미 Hold 상호작용 중이면 도중에 대상 바꾸지 않음
+        // Hold 상호작용 중이면 대상 유지
         if (isInteracting && activeInteractable != null)
         {
             currentInteractable = activeInteractable;
@@ -189,7 +196,6 @@ public class SurvivorInteractor : NetworkBehaviour
                 continue;
             }
 
-            // 감옥 상태면 내 감옥만 허용
             if (!CanUseThis(interactable))
                 continue;
 
@@ -223,7 +229,7 @@ public class SurvivorInteractor : NetworkBehaviour
         currentInteractable = best;
     }
 
-    // 높을수록 우선순위
+    // 우선순위
     private int GetPriority(IInteractable interactable)
     {
         if (interactable is Prison)
@@ -244,7 +250,7 @@ public class SurvivorInteractor : NetworkBehaviour
         return 0;
     }
 
-    // 감옥 상태일 때는 현재 감옥만 상호작용 허용
+    // 감옥 상태일 때는 자기 감옥만 허용
     private bool CanUseThis(IInteractable interactable)
     {
         if (state == null)
@@ -289,8 +295,13 @@ public class SurvivorInteractor : NetworkBehaviour
         if (input == null)
             return;
 
-        if (state != null && (state.IsDowned || state.IsBusy || state.IsDead))
-            return;
+        if (state != null)
+        {
+            bool isBusy = actionState != null && actionState.IsBusy;
+
+            if (state.IsDowned || isBusy || state.IsDead)
+                return;
+        }
 
         if (input.IsInteracting1)
         {
@@ -329,8 +340,13 @@ public class SurvivorInteractor : NetworkBehaviour
         if (input.IsCrouching)
             return;
 
-        if (state != null && (state.IsDowned || state.IsBusy || state.IsDead))
-            return;
+        if (state != null)
+        {
+            bool isBusy = actionState != null && actionState.IsBusy;
+
+            if (state.IsDowned || isBusy || state.IsDead)
+                return;
+        }
 
         if (input.IsInteracting2)
             currentInteractable.BeginInteract(gameObject);
@@ -344,8 +360,13 @@ public class SurvivorInteractor : NetworkBehaviour
         if (!enabled)
             return;
 
-        if (state != null && (state.IsDowned || state.IsBusy || state.IsDead))
-            return;
+        if (state != null)
+        {
+            bool isBusy = actionState != null && actionState.IsBusy;
+
+            if (state.IsDowned || isBusy || state.IsDead)
+                return;
+        }
 
         if (interactable == null)
             return;
@@ -400,14 +421,15 @@ public class SurvivorInteractor : NetworkBehaviour
         ForceHideProgress();
     }
 
+    // 행동 상태에 Hold 상호작용 여부 저장
     private void SetInteractionState(bool value)
     {
-        if (state == null)
+        if (actionState == null)
             return;
 
         if (isServer)
         {
-            state.SetDoingInteractionServer(value);
+            actionState.SetDoingInteractionServer(value);
         }
         else if (isLocalPlayer)
         {
@@ -415,10 +437,9 @@ public class SurvivorInteractor : NetworkBehaviour
         }
     }
 
-    // 피격, 다운 등으로 현재 상호작용을 강제로 끊을 때 사용
+    // 피격 등으로 현재 상호작용 강제 종료
     public void ForceStopInteract()
     {
-        // Hold 진행 중이면 대상에게 종료 알림
         if (isInteracting && activeInteractable != null)
         {
             isInteracting = false;
@@ -434,9 +455,9 @@ public class SurvivorInteractor : NetworkBehaviour
     [Command]
     private void CmdSetInteractionState(bool value)
     {
-        if (state == null)
+        if (actionState == null)
             return;
 
-        state.SetDoingInteractionServer(value);
+        actionState.SetDoingInteractionServer(value);
     }
 }
