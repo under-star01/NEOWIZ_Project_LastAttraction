@@ -51,6 +51,27 @@ public class SurvivorMoveState : NetworkBehaviour
         if (animator == null)
             return;
 
-        animator.SetInteger("Locomotion", (int)state);
+        float moveSpeed = 0f;
+        bool isCrouching = false;
+        bool isDowned = false;
+
+        if (state == SurvivorLocomotionState.Walk)
+            moveSpeed = 0.5f;
+        else if (state == SurvivorLocomotionState.Run)
+            moveSpeed = 1f;
+        else if (state == SurvivorLocomotionState.Crouch)
+        {
+            moveSpeed = 0.25f;
+            isCrouching = true;
+        }
+        else if (state == SurvivorLocomotionState.Crawl)
+        {
+            moveSpeed = 0.2f;
+            isDowned = true;
+        }
+
+        animator.SetFloat("MoveSpeed", moveSpeed, 0.1f, Time.deltaTime);
+        animator.SetBool("IsCrouching", isCrouching);
+        animator.SetBool("IsDowned", isDowned);
     }
 }
