@@ -121,6 +121,8 @@ public class SurvivorState : NetworkBehaviour
         if (IsImprisoned || IsDead)
             return;
 
+        StopAllCoroutines();
+
         if (interactor != null)
             interactor.ForceStopInteract();
 

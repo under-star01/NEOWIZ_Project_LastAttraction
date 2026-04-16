@@ -163,6 +163,16 @@ public class KillerCombat : NetworkBehaviour
             }
         }
 
+        if (isHit && survivorNetId != 0)
+        {
+            Debug.Log("킬러 공격 명중");
+            // ... TakeHit() 호출 ...
+        }
+        else
+        {
+            Debug.Log("헛스윙 또는 장해물에 막힘");
+        }
+
         float animSpeed = baseAttackAnimationLength / finalPenalty;
         RpcSyncAttackResult(animSpeed, finalPenalty);
     }
