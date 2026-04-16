@@ -360,14 +360,22 @@ public class SurvivorMove : NetworkBehaviour
         // 이동 상태 애니메이터 값 갱신
         if (moveState != null)
         {
-            if (!isMoving)
+            if (isCrouching)
+            {
+                moveState.SetMoveState(SurvivorLocomotionState.Crouch, isMoving);
+            }
+            else if (!isMoving)
+            {
                 moveState.SetMoveState(SurvivorLocomotionState.Idle, false);
-            else if (isCrouching)
-                moveState.SetMoveState(SurvivorLocomotionState.Crouch, true);
+            }
             else if (isRunning)
+            {
                 moveState.SetMoveState(SurvivorLocomotionState.Run, true);
+            }
             else
+            {
                 moveState.SetMoveState(SurvivorLocomotionState.Walk, true);
+            }
         }
     }
 
