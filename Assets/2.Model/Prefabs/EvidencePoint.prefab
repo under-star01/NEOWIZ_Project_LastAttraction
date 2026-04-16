@@ -179,6 +179,9 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   interactTime: 10
+  progressUI: {fileID: 0}
+  minQteCount: 2
+  maxQteCount: 4
 --- !u!114 &2725543321559420447
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -192,7 +195,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
   sceneId: 0
-  _assetId: 3842612691
+  _assetId: 3274993835
   serverOnly: 0
   visibility: 0
   hasSpawned: 0

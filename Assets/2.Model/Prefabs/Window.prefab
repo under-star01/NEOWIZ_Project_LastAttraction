@@ -55,7 +55,7 @@ MonoBehaviour:
   rightPoint: {fileID: 8438051215184147755}
   upPoint: {x: 0, y: 0, z: 0}
   moveToPointSpeed: 5
-  survivorVaultSpeed: 4
+  survivorVaultSpeed: 3
   killerVaultSpeed: 1.5
   occupationRadius: 1
 --- !u!65 &1173089845819824826
