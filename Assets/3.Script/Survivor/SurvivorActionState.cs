@@ -181,7 +181,6 @@ public class SurvivorActionState : NetworkBehaviour
 
     // 상태에 따라 SurvivorInteractor 자체를 켜고 끈다.
     // 이렇게 하면 상호작용 입력이 자연스럽게 막힌다.
-    [Server]
     public void ApplyUse()
     {
         if (interactor == null)
