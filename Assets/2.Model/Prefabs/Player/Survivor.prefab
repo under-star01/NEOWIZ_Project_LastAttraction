@@ -1254,9 +1254,11 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  input: {fileID: 0}
-  move: {fileID: 0}
-  act: {fileID: 0}
+  input: {fileID: 6204537575143600446}
+  move: {fileID: 8330642673507539603}
+  act: {fileID: 5606561105763548437}
+  skillCamera: {fileID: 899376854374036102}
+  skillUI: {fileID: 0}
 --- !u!1 &4079158676388771637
 GameObject:
   m_ObjectHideFlags: 0

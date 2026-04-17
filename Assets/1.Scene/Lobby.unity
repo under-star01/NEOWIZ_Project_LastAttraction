@@ -3796,8 +3796,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ba3205c15ebc9d548ad728483ccafc2c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraSkillUI
-  screenImage: {fileID: 0}
-  renderTexture: {fileID: 0}
+  screenImage: {fileID: 2105633325}
+  renderTexture: {fileID: 8400000, guid: e3cd11603eb8c6c41bfe6e47f0233821, type: 2}
 --- !u!1 &2130187008
 GameObject:
   m_ObjectHideFlags: 0
