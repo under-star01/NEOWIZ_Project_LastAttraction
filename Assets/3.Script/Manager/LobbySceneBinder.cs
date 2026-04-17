@@ -12,6 +12,7 @@ public class LobbySceneBinder : MonoBehaviour
     [Header("UI")]
     [SerializeField] private ProgressUI progressUI;
     [SerializeField] private QTEUI qteUI;
+    [SerializeField] private CameraSkillUI cameraSkillUI;
 
     [Header("Priority")]
     [SerializeField] private int livePriority = 20;
@@ -55,5 +56,10 @@ public class LobbySceneBinder : MonoBehaviour
     public QTEUI GetQTEUI()
     {
         return qteUI;
+    }
+
+    public CameraSkillUI GetCameraSkillUI()
+    {
+        return cameraSkillUI;
     }
 }

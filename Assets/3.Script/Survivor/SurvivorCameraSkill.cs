@@ -2,6 +2,10 @@ using Mirror;
 using UnityEngine;
 
 // 우클릭 홀드 카메라 스킬
+// - 입력 체크
+// - 상태 체크
+// - 스킬 on/off 동기화
+// - 로컬 UI / 전용 카메라 표시 제어
 public class SurvivorCameraSkill : NetworkBehaviour
 {
     [Header("참조")]
@@ -9,7 +13,10 @@ public class SurvivorCameraSkill : NetworkBehaviour
     [SerializeField] private SurvivorMove move;
     [SerializeField] private SurvivorActionState act;
 
-    // 현재 스킬 사용 여부
+    [Header("스킬 화면")]
+    [SerializeField] private Camera skillCamera;
+    [SerializeField] private CameraSkillUI skillUI;
+
     [SyncVar(hook = nameof(OnSkillChanged))]
     private bool isUse;
 
@@ -25,6 +32,29 @@ public class SurvivorCameraSkill : NetworkBehaviour
 
         if (act == null)
             act = GetComponent<SurvivorActionState>();
+
+        SetLocalView(false);
+    }
+
+    public override void OnStartLocalPlayer()
+    {
+        base.OnStartLocalPlayer();
+
+        if (skillUI == null && LobbySceneBinder.Instance != null)
+            skillUI = LobbySceneBinder.Instance.GetCameraSkillUI();
+
+        if (skillUI == null)
+            skillUI = FindFirstObjectByType<CameraSkillUI>(FindObjectsInactive.Include);
+
+        SetLocalView(false);
+    }
+
+    public override void OnStartClient()
+    {
+        base.OnStartClient();
+
+        if (!isLocalPlayer)
+            SetLocalView(false);
     }
 
     private void Update()
@@ -37,7 +67,6 @@ public class SurvivorCameraSkill : NetworkBehaviour
         if (input != null)
             want = input.IsCameraSkillPressed;
 
-        // 조건이 안 되면 누르고 있어도 강제로 해제
         if (!CanUse())
             want = false;
 
@@ -45,7 +74,6 @@ public class SurvivorCameraSkill : NetworkBehaviour
             CmdSetSkill(want);
     }
 
-    // 로컬에서 사용 가능 여부 확인
     private bool CanUse()
     {
         if (act == null)
@@ -70,10 +98,33 @@ public class SurvivorCameraSkill : NetworkBehaviour
         act.SetCam(value);
     }
 
-    // 값이 바뀌면 애니메이션 bool 동기화
     private void OnSkillChanged(bool oldValue, bool newValue)
     {
         if (move != null)
             move.SetCamAnim(newValue);
+
+        SetLocalView(newValue);
+    }
+
+    private void SetLocalView(bool value)
+    {
+        if (!isLocalPlayer)
+        {
+            if (skillCamera != null)
+                skillCamera.enabled = false;
+
+            return;
+        }
+
+        if (skillCamera != null)
+            skillCamera.enabled = value;
+
+        if (skillUI != null)
+        {
+            if (value)
+                skillUI.Show();
+            else
+                skillUI.Hide();
+        }
     }
 }

@@ -270,4 +270,11 @@ public class SurvivorActionState : NetworkBehaviour
             ApplyState();
         }
     }
+
+    [Server]
+    public void ForceResetActionServer()
+    {
+        // 피격 등으로 인해 현재 진행 중인 강제 행동(트랩 등)을 서버에서 즉시 종료시킴
+        currentAction = SurvivorAction.None;
+    }
 }
