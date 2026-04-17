@@ -16,6 +16,7 @@ public class SurvivorCameraSkill : NetworkBehaviour
     [Header("스킬 화면")]
     [SerializeField] private Camera skillCamera;
     [SerializeField] private CameraSkillUI skillUI;
+    [SerializeField] private GameObject cameraModel;
 
     [SyncVar(hook = nameof(OnSkillChanged))]
     private bool isUse;
@@ -39,6 +40,9 @@ public class SurvivorCameraSkill : NetworkBehaviour
         // 시작 시 카메라는 무조건 꺼둔다
         if (skillCamera != null)
             skillCamera.enabled = false;
+
+        if (cameraModel != null)
+            cameraModel.SetActive(false);
     }
 
     public override void OnStartLocalPlayer()
@@ -127,11 +131,14 @@ public class SurvivorCameraSkill : NetworkBehaviour
         if (!isLocalPlayer)
             return;
 
-        // 아직 로컬 준비 전이면 카메라만 꺼두고 종료
+        // 아직 로컬 준비 전이면 전용 카메라/모델만 꺼두고 종료
         if (!isLocalReady)
         {
             if (skillCamera != null)
                 skillCamera.enabled = false;
+
+            if (cameraModel != null)
+                cameraModel.SetActive(false);
 
             return;
         }
@@ -140,6 +147,9 @@ public class SurvivorCameraSkill : NetworkBehaviour
 
         if (skillCamera != null)
             skillCamera.enabled = value;
+
+        if (cameraModel != null)
+            cameraModel.SetActive(value);
 
         if (skillUI != null)
         {
