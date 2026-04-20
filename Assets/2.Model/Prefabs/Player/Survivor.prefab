@@ -1648,7 +1648,7 @@ MonoBehaviour:
   skillUI: {fileID: 0}
   cameraModel: {fileID: 363499901176236862}
   normalLocalPosition: {x: 0, y: 1, z: -3}
-  skillLocalPosition: {x: 1, y: -1.5, z: -2}
+  skillLocalPosition: {x: 0.7, y: 1.55, z: -1.5}
   normalLocalEuler: {x: 0, y: 0, z: 0}
   skillLocalEuler: {x: 0, y: 0, z: 0}
 --- !u!114 &9165850540253019217
