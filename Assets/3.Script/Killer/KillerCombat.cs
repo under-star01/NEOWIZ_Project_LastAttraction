@@ -58,7 +58,7 @@ public class KillerCombat : NetworkBehaviour
             return;
         }
 
-        bool isPlanting = (trapHandler != null && trapHandler.isBuildMode);
+        bool isPlanting = (trapHandler != null && trapHandler.IsBuildMode);
 
         if (!isPlanting)
         {
@@ -72,6 +72,11 @@ public class KillerCombat : NetworkBehaviour
 
     private void HandleAttackInput()
     {
+        if (trapHandler != null && trapHandler.IsBuildMode)
+        {
+            return;
+        }
+
         if (input.IsAttackPressed)
         {
             if (state.CurrentCondition != KillerCondition.Lunging)

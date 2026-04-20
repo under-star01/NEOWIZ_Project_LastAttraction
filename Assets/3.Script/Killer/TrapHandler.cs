@@ -11,7 +11,9 @@ public class TrapHandler : NetworkBehaviour
     public LayerMask obstacleMask;
 
     private GameObject ghostInstance;
-    public bool isBuildMode = false;
+    private bool isBuildMode = false;
+
+    public bool IsBuildMode => isBuildMode;
 
     private Camera cam;
     private KillerState state;
