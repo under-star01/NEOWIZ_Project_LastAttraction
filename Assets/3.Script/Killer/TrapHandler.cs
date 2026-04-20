@@ -11,17 +11,17 @@ public class TrapHandler : NetworkBehaviour
     public LayerMask obstacleMask;
 
     private GameObject ghostInstance;
-    private bool isBuildMode = false;
+    public bool isBuildMode = false;
 
-    private Animator animator;
     private Camera cam;
+    private KillerState state;
 
     // 서버에서 설치된 함정들을 관리할 리스트 (서버 전용) [cite: 2026-04-06]
     private readonly List<GameObject> spawnedTraps = new List<GameObject>();
 
     void Awake()
     {
-        animator = GetComponent<Animator>();
+        state = GetComponent<KillerState>();
         cam = GetComponentInChildren<Camera>();
     }
 
@@ -57,10 +57,13 @@ public class TrapHandler : NetworkBehaviour
                 if (ghostInstance.TryGetComponent(out TrapNode node)) node.enabled = false;
                 SetGhostVisual(ghostInstance, 0.4f);
             }
+            state.CmdChangeKillerState(KillerCondition.Planting);
         }
         else
         {
             CleanupGhost();
+
+            state.CmdChangeKillerState(KillerCondition.Idle);
         }
     }
 

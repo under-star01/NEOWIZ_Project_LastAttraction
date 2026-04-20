@@ -21,6 +21,7 @@ public class KillerCombat : NetworkBehaviour
     private KillerInput input;
     private KillerState state;
     private Animator animator;
+    private TrapHandler trapHandler;
 
     private float currentLungeTime;
     private float currentPenaltyTime;
@@ -33,6 +34,7 @@ public class KillerCombat : NetworkBehaviour
         input = GetComponent<KillerInput>();
         state = GetComponent<KillerState>();
         animator = GetComponentInChildren<Animator>();
+        trapHandler = GetComponent<TrapHandler>();
     }
 
     void Update()
@@ -56,9 +58,15 @@ public class KillerCombat : NetworkBehaviour
             return;
         }
 
-        if (state.CanAttack || state.CurrentCondition == KillerCondition.Lunging)
+        bool isPlanting = (trapHandler != null && trapHandler.isBuildMode);
+
+        if (!isPlanting)
         {
-            HandleAttackInput();
+            // 대기 상태(Idle)이거나 이미 공격(Lunging) 중일 때만 입력 처리
+            if (state.CanAttack || state.CurrentCondition == KillerCondition.Lunging)
+            {
+                HandleAttackInput();
+            }
         }
     }
 
