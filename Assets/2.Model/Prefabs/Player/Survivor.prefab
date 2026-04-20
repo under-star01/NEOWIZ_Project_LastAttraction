@@ -1428,12 +1428,12 @@ GameObject:
   - component: {fileID: 8912751445133143526}
   - component: {fileID: 2491799505081291953}
   - component: {fileID: 7436738972924962348}
-  - component: {fileID: 9165850540253019217}
-  - component: {fileID: 7660049669671203594}
-  - component: {fileID: 2069850198979918394}
   - component: {fileID: 9042901668219853417}
   - component: {fileID: 5606561105763548437}
   - component: {fileID: 4145043514256990560}
+  - component: {fileID: 9165850540253019217}
+  - component: {fileID: 7660049669671203594}
+  - component: {fileID: 2069850198979918394}
   m_Layer: 6
   m_Name: Survivor
   m_TagString: Survivor
@@ -1591,6 +1591,66 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &9042901668219853417
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4072989509792940907}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ee701f0955086c44090d8e0757e82479, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SurvivorMoveState
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  animator: {fileID: 0}
+--- !u!114 &5606561105763548437
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4072989509792940907}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e6471a8e864ee254caef6179b04b5fac, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SurvivorActionState
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  move: {fileID: 0}
+  interactor: {fileID: 0}
+  animator: {fileID: 0}
+--- !u!114 &4145043514256990560
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4072989509792940907}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6a543f095c8188f40b126a79473bdfa7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SurvivorCameraSkill
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  input: {fileID: 6204537575143600446}
+  move: {fileID: 8330642673507539603}
+  act: {fileID: 5606561105763548437}
+  mainCamera: {fileID: 4220329845384900408}
+  skillCamera: {fileID: 899376854374036102}
+  skillUI: {fileID: 0}
+  cameraModel: {fileID: 363499901176236862}
+  normalLocalPosition: {x: 0, y: 1, z: -3}
+  skillLocalPosition: {x: 1, y: -1.5, z: -2}
+  normalLocalEuler: {x: 0, y: 0, z: 0}
+  skillLocalEuler: {x: 0, y: 0, z: 0}
 --- !u!114 &9165850540253019217
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1659,61 +1719,6 @@ MonoBehaviour:
   syncInterval: 0
   clientAuthority: 0
   animator: {fileID: 7436738972924962348}
---- !u!114 &9042901668219853417
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4072989509792940907}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ee701f0955086c44090d8e0757e82479, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SurvivorMoveState
-  syncDirection: 0
-  syncMode: 0
-  syncInterval: 0
-  animator: {fileID: 0}
---- !u!114 &5606561105763548437
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4072989509792940907}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e6471a8e864ee254caef6179b04b5fac, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SurvivorActionState
-  syncDirection: 0
-  syncMode: 0
-  syncInterval: 0
-  move: {fileID: 0}
-  interactor: {fileID: 0}
-  animator: {fileID: 0}
---- !u!114 &4145043514256990560
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4072989509792940907}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6a543f095c8188f40b126a79473bdfa7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SurvivorCameraSkill
-  syncDirection: 0
-  syncMode: 0
-  syncInterval: 0
-  input: {fileID: 6204537575143600446}
-  move: {fileID: 8330642673507539603}
-  act: {fileID: 5606561105763548437}
-  skillCamera: {fileID: 899376854374036102}
-  skillUI: {fileID: 0}
-  cameraModel: {fileID: 363499901176236862}
 --- !u!1 &4079158676388771637
 GameObject:
   m_ObjectHideFlags: 0

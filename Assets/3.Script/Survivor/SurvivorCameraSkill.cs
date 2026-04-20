@@ -14,9 +14,16 @@ public class SurvivorCameraSkill : NetworkBehaviour
     [SerializeField] private SurvivorActionState act;
 
     [Header("스킬 화면")]
+    [SerializeField] private Camera mainCamera;
     [SerializeField] private Camera skillCamera;
     [SerializeField] private CameraSkillUI skillUI;
     [SerializeField] private GameObject cameraModel;
+
+    [Header("카메라 위치")]
+    [SerializeField] private Vector3 normalLocalPosition = new Vector3(0f, 1f, -3f);
+    [SerializeField] private Vector3 skillLocalPosition = new Vector3(1f, -1.5f, -2f);
+    [SerializeField] private Vector3 normalLocalEuler = Vector3.zero;
+    [SerializeField] private Vector3 skillLocalEuler = Vector3.zero;
 
     [SyncVar(hook = nameof(OnSkillChanged))]
     private bool isUse;
@@ -25,7 +32,7 @@ public class SurvivorCameraSkill : NetworkBehaviour
 
     // 로컬 UI 준비 완료 여부
     private bool isLocalReady;
-
+    
     private void Awake()
     {
         if (input == null)
@@ -37,7 +44,7 @@ public class SurvivorCameraSkill : NetworkBehaviour
         if (act == null)
             act = GetComponent<SurvivorActionState>();
 
-        // 시작 시 카메라는 무조건 꺼둔다
+        // 카메라 초기 설정
         if (skillCamera != null)
             skillCamera.enabled = false;
 
@@ -145,8 +152,23 @@ public class SurvivorCameraSkill : NetworkBehaviour
 
         BindUI();
 
+        // 촬영 상태 카메라 위치 조정
         if (skillCamera != null)
             skillCamera.enabled = value;
+        
+        if (mainCamera != null)
+        {
+            if (value)
+            {
+                mainCamera.transform.localPosition = skillLocalPosition;
+                mainCamera.transform.localRotation = Quaternion.Euler(skillLocalEuler);
+            }
+            else
+            {
+                mainCamera.transform.localPosition = normalLocalPosition;
+                mainCamera.transform.localRotation = Quaternion.Euler(normalLocalEuler);
+            }
+        }
 
         if (cameraModel != null)
             cameraModel.SetActive(value);
