@@ -157,8 +157,6 @@ public class CustomNetworkManager : NetworkManager
 
         UIManager.Instance?.ShowLoading(false);
 
-        LobbySceneBinder.Instance?.ApplyCameraForRole(JoinRole.None);
-
         if (connectRoutine != null)
         {
             StopCoroutine(connectRoutine);

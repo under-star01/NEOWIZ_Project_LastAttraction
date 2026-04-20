@@ -24,15 +24,4 @@ public class LobbyPlayerMode : NetworkBehaviour
     {
         ApplyLobbyCamera(scene.name);
     }
-
-    private void ApplyLobbyCamera(string sceneName)
-    {
-        if (!isLocalPlayer)
-            return;
-
-        if (sceneName != lobbySceneName)
-            return;
-
-        LobbySceneBinder.Instance?.ApplyCameraForRole(role);
-    }
 }

@@ -1,4 +1,5 @@
 using Mirror;
+using Unity.Cinemachine;
 using UnityEngine;
 
 // 우클릭 홀드 카메라 스킬
@@ -14,16 +15,13 @@ public class SurvivorCameraSkill : NetworkBehaviour
     [SerializeField] private SurvivorActionState act;
 
     [Header("스킬 화면")]
-    [SerializeField] private Camera mainCamera;
     [SerializeField] private Camera skillCamera;
     [SerializeField] private CameraSkillUI skillUI;
     [SerializeField] private GameObject cameraModel;
 
     [Header("카메라 위치")]
-    [SerializeField] private Vector3 normalLocalPosition = new Vector3(0f, 1f, -3f);
-    [SerializeField] private Vector3 skillLocalPosition = new Vector3(1f, -1.5f, -2f);
-    [SerializeField] private Vector3 normalLocalEuler = Vector3.zero;
-    [SerializeField] private Vector3 skillLocalEuler = Vector3.zero;
+    [SerializeField] private CinemachineCamera normalCinemachine;
+    [SerializeField] private CinemachineCamera skillCinemachine;
 
     [SyncVar(hook = nameof(OnSkillChanged))]
     private bool isUse;
@@ -156,17 +154,17 @@ public class SurvivorCameraSkill : NetworkBehaviour
         if (skillCamera != null)
             skillCamera.enabled = value;
         
-        if (mainCamera != null)
+        if (normalCinemachine != null && skillCinemachine != null)
         {
             if (value)
             {
-                mainCamera.transform.localPosition = skillLocalPosition;
-                mainCamera.transform.localRotation = Quaternion.Euler(skillLocalEuler);
+                normalCinemachine.Priority = 30;
+                skillCinemachine.Priority = 0;
             }
             else
             {
-                mainCamera.transform.localPosition = normalLocalPosition;
-                mainCamera.transform.localRotation = Quaternion.Euler(normalLocalEuler);
+                normalCinemachine.Priority = 0;
+                skillCinemachine.Priority = 30;
             }
         }
 
