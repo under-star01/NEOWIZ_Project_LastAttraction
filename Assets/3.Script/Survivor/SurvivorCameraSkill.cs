@@ -158,13 +158,13 @@ public class SurvivorCameraSkill : NetworkBehaviour
         {
             if (value)
             {
-                normalCinemachine.Priority = 30;
-                skillCinemachine.Priority = 0;
+                normalCinemachine.Priority = 0;
+                skillCinemachine.Priority = 30;
             }
             else
             {
-                normalCinemachine.Priority = 0;
-                skillCinemachine.Priority = 30;
+                normalCinemachine.Priority = 30;
+                skillCinemachine.Priority = 0;
             }
         }
 
