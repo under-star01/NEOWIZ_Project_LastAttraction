@@ -47,35 +47,51 @@ public class KillerCombat : NetworkBehaviour
 
         if (!isLocalPlayer) return;
 
-        if (state.CurrentCondition == KillerCondition.Recovering)
+        if ((trapHandler != null && trapHandler.IsBuildMode) || state.CurrentCondition == KillerCondition.Planting)
         {
-            currentPenaltyTime -= Time.deltaTime;
-            if (currentPenaltyTime <= 0f)
-            {
-                isEndingAttack = false;
-                CmdResetToIdle();
-            }
             return;
         }
 
-        bool isPlanting = (trapHandler != null && trapHandler.IsBuildMode);
+        //if (state.CurrentCondition == KillerCondition.Recovering)
+        //{
+        //    currentPenaltyTime -= Time.deltaTime;
+        //    if (currentPenaltyTime <= 0f)
+        //    {
+        //        isEndingAttack = false;
+        //        CmdResetToIdle();
+        //    }
+        //    return;
+        //}
 
-        if (!isPlanting)
+        if (state.CurrentCondition == KillerCondition.Recovering)
         {
-            // 대기 상태(Idle)이거나 이미 공격(Lunging) 중일 때만 입력 처리
-            if (state.CanAttack || state.CurrentCondition == KillerCondition.Lunging)
-            {
-                HandleAttackInput();
-            }
+            HandleRecovery();
+            return;
+        }
+
+        if (state.CanAttack || state.CurrentCondition == KillerCondition.Lunging)
+        {
+            HandleAttackInput();
+        }
+    }
+
+    private void HandleRecovery()
+    {
+        currentPenaltyTime -= Time.deltaTime;
+        if (currentPenaltyTime <= 0f)
+        {
+            isEndingAttack = false;
+            CmdResetToIdle();
         }
     }
 
     private void HandleAttackInput()
     {
-        if (trapHandler != null && trapHandler.IsBuildMode)
-        {
-            return;
-        }
+        if (!isLocalPlayer) return;
+
+        // [중요] 시작 부분에 다시 한번 이중 잠금
+        if (trapHandler != null && trapHandler.IsBuildMode) return;
+
 
         if (input.IsAttackPressed)
         {
