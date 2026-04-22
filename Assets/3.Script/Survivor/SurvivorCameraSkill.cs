@@ -2,11 +2,6 @@ using Mirror;
 using Unity.Cinemachine;
 using UnityEngine;
 
-// 우클릭 홀드 카메라 스킬
-// - 입력 체크
-// - 상태 체크
-// - 스킬 on/off 동기화
-// - 로컬 UI / 전용 카메라 표시 제어
 public class SurvivorCameraSkill : NetworkBehaviour
 {
     [Header("참조")]
@@ -17,7 +12,10 @@ public class SurvivorCameraSkill : NetworkBehaviour
     [Header("스킬 화면")]
     [SerializeField] private Camera skillCamera;
     [SerializeField] private CameraSkillUI skillUI;
-    [SerializeField] private GameObject cameraModel;
+
+    [Header("카메라 모델")]
+    [SerializeField] private GameObject localCameraModel;
+    [SerializeField] private GameObject worldCameraModel;
 
     [Header("카메라 위치")]
     [SerializeField] private CinemachineCamera normalCinemachine;
@@ -28,9 +26,9 @@ public class SurvivorCameraSkill : NetworkBehaviour
 
     public bool IsUse => isUse;
 
-    // 로컬 UI 준비 완료 여부
     private bool isLocalReady;
-    
+    private Renderer[] worldModelRenderers;
+
     private void Awake()
     {
         if (input == null)
@@ -42,12 +40,17 @@ public class SurvivorCameraSkill : NetworkBehaviour
         if (act == null)
             act = GetComponent<SurvivorActionState>();
 
-        // 카메라 초기 설정
         if (skillCamera != null)
             skillCamera.enabled = false;
 
-        if (cameraModel != null)
-            cameraModel.SetActive(false);
+        if (localCameraModel != null)
+            localCameraModel.SetActive(false);
+
+        if (worldCameraModel != null)
+        {
+            worldCameraModel.SetActive(false);
+            worldModelRenderers = worldCameraModel.GetComponentsInChildren<Renderer>(true);
+        }
     }
 
     public override void OnStartLocalPlayer()
@@ -56,8 +59,6 @@ public class SurvivorCameraSkill : NetworkBehaviour
 
         BindUI();
         isLocalReady = true;
-
-        // 로컬 준비가 끝난 뒤 현재 상태 다시 반영
         ApplyLocalView(isUse);
     }
 
@@ -65,9 +66,11 @@ public class SurvivorCameraSkill : NetworkBehaviour
     {
         base.OnStartClient();
 
-        // 내 플레이어가 아니면 전용 카메라는 항상 꺼둔다
         if (!isLocalPlayer && skillCamera != null)
             skillCamera.enabled = false;
+
+        if (!isLocalPlayer && localCameraModel != null)
+            localCameraModel.SetActive(false);
     }
 
     private void Update()
@@ -116,10 +119,14 @@ public class SurvivorCameraSkill : NetworkBehaviour
         if (move != null)
             move.SetCamAnim(newValue);
 
-        // SyncVar hook은 UI 준비 전에도 들어올 수 있으니
-        // 로컬 준비가 끝난 뒤에만 안전하게 반영
+        if (worldCameraModel != null)
+            worldCameraModel.SetActive(newValue);
+
         if (isLocalPlayer)
+        {
+            SetOwnWorldModelVisible(!newValue);
             ApplyLocalView(newValue);
+        }
     }
 
     private void BindUI()
@@ -131,29 +138,42 @@ public class SurvivorCameraSkill : NetworkBehaviour
             skillUI = FindFirstObjectByType<CameraSkillUI>(FindObjectsInactive.Include);
     }
 
+    private void SetOwnWorldModelVisible(bool value)
+    {
+        if (!isLocalPlayer)
+            return;
+
+        if (worldModelRenderers == null)
+            return;
+
+        for (int i = 0; i < worldModelRenderers.Length; i++)
+        {
+            if (worldModelRenderers[i] != null)
+                worldModelRenderers[i].enabled = value;
+        }
+    }
+
     private void ApplyLocalView(bool value)
     {
         if (!isLocalPlayer)
             return;
 
-        // 아직 로컬 준비 전이면 전용 카메라/모델만 꺼두고 종료
         if (!isLocalReady)
         {
             if (skillCamera != null)
                 skillCamera.enabled = false;
 
-            if (cameraModel != null)
-                cameraModel.SetActive(false);
+            if (localCameraModel != null)
+                localCameraModel.SetActive(false);
 
             return;
         }
 
         BindUI();
 
-        // 촬영 상태 카메라 위치 조정
         if (skillCamera != null)
             skillCamera.enabled = value;
-        
+
         if (normalCinemachine != null && skillCinemachine != null)
         {
             if (value)
@@ -168,8 +188,8 @@ public class SurvivorCameraSkill : NetworkBehaviour
             }
         }
 
-        if (cameraModel != null)
-            cameraModel.SetActive(value);
+        if (localCameraModel != null)
+            localCameraModel.SetActive(value);
 
         if (skillUI != null)
         {

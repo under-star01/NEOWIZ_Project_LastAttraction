@@ -23,8 +23,8 @@ TagManager:
   - Downed
   - Door
   - Sur_Trigger
-  - 
-  - 
+  - LocalCameraModel
+  - WorldCameraModel
   - 
   - 
   - 
