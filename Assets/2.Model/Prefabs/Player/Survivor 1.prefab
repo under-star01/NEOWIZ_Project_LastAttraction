@@ -455,7 +455,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 219398185157743783}
-  - component: {fileID: 6191140691642191581}
   m_Layer: 0
   m_Name: Survivor1
   m_TagString: Untagged
@@ -489,28 +488,6 @@ Transform:
   - {fileID: 3290562891868809629}
   m_Father: {fileID: 8174374209964335500}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!95 &6191140691642191581
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 594657464390061597}
-  m_Enabled: 1
-  m_Avatar: {fileID: 9000000, guid: 6ddc9ecd478661b4d930fa89f4eb3e8a, type: 3}
-  m_Controller: {fileID: 0}
-  m_CullingMode: 1
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 1
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
 --- !u!1 &600928133608954414
 GameObject:
   m_ObjectHideFlags: 0
@@ -2428,7 +2405,7 @@ GameObject:
   - component: {fileID: 7660049669671203594}
   - component: {fileID: 2069850198979918394}
   m_Layer: 6
-  m_Name: Survivor
+  m_Name: Survivor 1
   m_TagString: Survivor
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
