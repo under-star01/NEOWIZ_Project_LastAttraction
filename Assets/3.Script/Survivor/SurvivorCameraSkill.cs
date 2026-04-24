@@ -8,14 +8,15 @@ public class SurvivorCameraSkill : NetworkBehaviour
     [SerializeField] private SurvivorInput input;
     [SerializeField] private SurvivorMove move;
     [SerializeField] private SurvivorActionState act;
+    [SerializeField] private SurvivorState state;
 
     [Header("스킬 화면")]
     [SerializeField] private Camera skillCamera;
     [SerializeField] private CameraSkillUI skillUI;
 
     [Header("카메라 모델")]
-    [SerializeField] private GameObject localCameraModel;
-    [SerializeField] private GameObject worldCameraModel;
+    [SerializeField] private GameObject localCameraModel;   // 내 화면용 카메라 모델
+    [SerializeField] private GameObject worldCameraModel;   // 월드에 보이는 카메라 모델
 
     [Header("카메라 위치")]
     [SerializeField] private CinemachineCamera normalCinemachine;
@@ -26,10 +27,14 @@ public class SurvivorCameraSkill : NetworkBehaviour
 
     public bool IsUse => isUse;
 
+    // 로컬 플레이어 UI / 카메라 준비 완료 여부
     private bool isLocalReady;
 
-    private int worldCameraLayer;
-    private int ownerHiddenLayer;
+    // 자주 쓰는 레이어 번호 캐시
+    private int camWorldLayer;
+    private int hideSelfLayer;
+    private int survivorLayer;
+    private int downedLayer;
 
     private void Awake()
     {
@@ -42,23 +47,32 @@ public class SurvivorCameraSkill : NetworkBehaviour
         if (act == null)
             act = GetComponent<SurvivorActionState>();
 
+        if (state == null)
+            state = GetComponent<SurvivorState>();
+
+        // 시작 시 스킬 카메라는 꺼둔다
         if (skillCamera != null)
             skillCamera.enabled = false;
 
+        // 시작 시 카메라 모델도 숨긴다
         if (localCameraModel != null)
             localCameraModel.SetActive(false);
 
         if (worldCameraModel != null)
             worldCameraModel.SetActive(false);
 
+        // 시작 시 내 플레이어가 아니면 시네머신도 꺼져 있어야 안전하다
         if (normalCinemachine != null)
             normalCinemachine.gameObject.SetActive(false);
 
         if (skillCinemachine != null)
             skillCinemachine.gameObject.SetActive(false);
 
-        worldCameraLayer = LayerMask.NameToLayer("WorldCameraModel");
-        ownerHiddenLayer = LayerMask.NameToLayer("OwnerWorldCameraHidden");
+        // 사용할 레이어 이름
+        camWorldLayer = LayerMask.NameToLayer("CamWorld");
+        hideSelfLayer = LayerMask.NameToLayer("HideSelf");
+        survivorLayer = LayerMask.NameToLayer("Survivor");
+        downedLayer = LayerMask.NameToLayer("Downed");
     }
 
     public override void OnStartLocalPlayer()
@@ -68,13 +82,14 @@ public class SurvivorCameraSkill : NetworkBehaviour
         BindUI();
         isLocalReady = true;
 
-        // 내 플레이어의 Cinemachine 카메라만 활성화
+        // 내 플레이어의 시네머신만 활성화
         if (normalCinemachine != null)
             normalCinemachine.gameObject.SetActive(true);
 
         if (skillCinemachine != null)
             skillCinemachine.gameObject.SetActive(true);
 
+        // 현재 상태 다시 반영
         ApplyLocalView(isUse);
     }
 
@@ -82,7 +97,7 @@ public class SurvivorCameraSkill : NetworkBehaviour
     {
         base.OnStartClient();
 
-        // 남의 플레이어 카메라는 절대 활성화되면 안 된다.
+        // 남의 플레이어 카메라는 절대 활성화되면 안 된다
         if (!isLocalPlayer)
         {
             if (skillCamera != null)
@@ -106,6 +121,7 @@ public class SurvivorCameraSkill : NetworkBehaviour
         if (input != null)
             want = input.IsCameraSkillPressed;
 
+        // 현재 상태상 사용 불가능하면 강제로 끈다
         if (!CanUse())
             want = false;
 
@@ -113,6 +129,7 @@ public class SurvivorCameraSkill : NetworkBehaviour
             CmdSetSkill(want);
     }
 
+    // 스킬 사용 가능 여부 검사
     private bool CanUse()
     {
         if (act == null)
@@ -137,21 +154,30 @@ public class SurvivorCameraSkill : NetworkBehaviour
         act.SetCam(value);
     }
 
+    // 스킬 on/off가 바뀌면 애니메이션 / 카메라 모델 / 로컬 화면을 갱신한다
     private void OnSkillChanged(bool oldValue, bool newValue)
     {
         if (move != null)
             move.SetCamAnim(newValue);
 
+        // 월드 카메라 모델은 스킬 중에만 보이게
         if (worldCameraModel != null)
             worldCameraModel.SetActive(newValue);
 
         if (isLocalPlayer)
         {
-            SetOwnWorldModelHiddenForSkill(newValue);
+            // 내 월드 카메라 모델만 스킬 카메라에서 안 보이게
+            SetOwnWorldCamHidden(newValue);
+
+            // 내 몸 모델도 스킬 카메라에서 안 보이게
+            SetOwnBodyHidden(newValue);
+
+            // 로컬 UI / 카메라 반영
             ApplyLocalView(newValue);
         }
     }
 
+    // 씬 UI 찾기
     private void BindUI()
     {
         if (skillUI == null && LobbySceneBinder.Instance != null)
@@ -161,7 +187,9 @@ public class SurvivorCameraSkill : NetworkBehaviour
             skillUI = FindFirstObjectByType<CameraSkillUI>(FindObjectsInactive.Include);
     }
 
-    private void SetOwnWorldModelHiddenForSkill(bool hide)
+    // 내 월드 카메라 모델만 숨김 레이어로 바꾼다
+    // 상대 월드 카메라는 그대로 CamWorld라서 스킬 카메라에 보인다
+    private void SetOwnWorldCamHidden(bool hide)
     {
         if (!isLocalPlayer)
             return;
@@ -169,14 +197,37 @@ public class SurvivorCameraSkill : NetworkBehaviour
         if (worldCameraModel == null)
             return;
 
-        int targetLayer = worldCameraLayer;
+        int targetLayer = camWorldLayer;
 
         if (hide)
-            targetLayer = ownerHiddenLayer;
+            targetLayer = hideSelfLayer;
 
         SetLayerRecursive(worldCameraModel.transform, targetLayer);
     }
 
+    // 내 몸 모델도 숨김 레이어로 바꾼다
+    // 스킬 종료 시 현재 몸 상태에 맞는 원래 레이어로 되돌린다
+    private void SetOwnBodyHidden(bool hide)
+    {
+        if (!isLocalPlayer)
+            return;
+
+        if (move == null)
+            return;
+
+        if (hide)
+        {
+            move.SetModelLayer(hideSelfLayer);
+            return;
+        }
+
+        if (state != null && state.IsDowned)
+            move.SetModelLayer(downedLayer);
+        else
+            move.SetModelLayer(survivorLayer);
+    }
+
+    // 오브젝트와 자식들의 레이어를 전부 바꾼다
     private void SetLayerRecursive(Transform target, int layer)
     {
         if (target == null)
@@ -188,6 +239,11 @@ public class SurvivorCameraSkill : NetworkBehaviour
             SetLayerRecursive(target.GetChild(i), layer);
     }
 
+    // 로컬 플레이어 화면에만 적용되는 요소
+    // - 스킬 카메라
+    // - 시네머신 전환
+    // - 로컬 카메라 모델
+    // - UI
     private void ApplyLocalView(bool value)
     {
         if (!isLocalPlayer)
@@ -223,6 +279,7 @@ public class SurvivorCameraSkill : NetworkBehaviour
             }
         }
 
+        // 내 화면 전용 카메라 모델
         if (localCameraModel != null)
             localCameraModel.SetActive(value);
 

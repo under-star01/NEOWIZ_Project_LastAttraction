@@ -116,6 +116,28 @@ public class SurvivorMove : NetworkBehaviour
         syncedModelYaw = modelRoot.eulerAngles.y;
     }
 
+    // 내 몸 모델의 레이어를 통째로 바꿀 때 사용
+    // 스킬 카메라에서 자기 몸만 숨기고 싶을 때 호출한다.
+    public void SetModelLayer(int layer)
+    {
+        if (modelRoot == null)
+            return;
+
+        SetLayerRecursive(modelRoot, layer);
+    }
+
+    // modelRoot와 자식들의 레이어를 전부 같은 값으로 바꾼다.
+    private void SetLayerRecursive(Transform target, int layer)
+    {
+        if (target == null)
+            return;
+
+        target.gameObject.layer = layer;
+
+        for (int i = 0; i < target.childCount; i++)
+            SetLayerRecursive(target.GetChild(i), layer);
+    }
+
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
@@ -318,7 +340,18 @@ public class SurvivorMove : NetworkBehaviour
             move.Normalize();
 
         bool isMoving = move.sqrMagnitude > 0.001f;
-        bool isRunning = isMoving && !isCrouching && wantsRun;
+
+        // 카메라 스킬 중인지 먼저 판정
+        bool useCamSkill = false;
+
+        if (camSkill != null && camSkill.IsUse)
+            useCamSkill = true;
+
+        if (act != null && act.IsCamSkill)
+            useCamSkill = true;
+
+        // 스킬 중에는 달리기 금지
+        bool isRunning = isMoving && !isCrouching && wantsRun && !useCamSkill;
 
         float speed = walkSpeed;
 
@@ -338,15 +371,6 @@ public class SurvivorMove : NetworkBehaviour
         controller.Move(finalMove * Time.fixedDeltaTime);
 
         // 카메라 스킬 중이면 몸을 카메라 정면 방향으로 유지
-        // camSkill 또는 actionState 둘 중 하나라도 true면 스킬 상태로 본다.
-        bool useCamSkill = false;
-
-        if (camSkill != null && camSkill.IsUse)
-            useCamSkill = true;
-
-        if (act != null && act.IsCamSkill)
-            useCamSkill = true;
-
         if (useCamSkill)
         {
             Vector3 camDir = yawRot * Vector3.forward;

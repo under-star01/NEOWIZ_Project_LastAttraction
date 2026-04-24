@@ -123,11 +123,7 @@ public class SurvivorState : NetworkBehaviour
 
         StopAllCoroutines();
         if (actionState != null)
-        {
-            // 중요: 코루틴을 멈췄으므로, 'Stunned'에 멈춰있는 Action을 None으로 초기화해야 합니다.
-            // 그래야 피격 이후에 캐릭터가 굳지 않고 정상적으로 움직일 수 있습니다.
             actionState.ForceResetActionServer();
-        }
 
         if (interactor != null)
             interactor.ForceStopInteract();
@@ -288,22 +284,22 @@ public class SurvivorState : NetworkBehaviour
         if (target == null)
             return;
 
-        int localCameraLayer = LayerMask.NameToLayer("LocalCameraModel");
-        int worldCameraLayer = LayerMask.NameToLayer("WorldCameraModel");
-        int ownerHiddenLayer = LayerMask.NameToLayer("OwnerWorldCameraHidden");
+        int camLocalLayer = LayerMask.NameToLayer("CamLocal");
+        int camWorldLayer = LayerMask.NameToLayer("CamWorld");
+        int hideSelfLayer = LayerMask.NameToLayer("HideSelf");
 
         // 힐 트리거는 레이어 변경 제외
         if (target.GetComponent<SurvivorHeal>() != null)
             return;
 
-        // 카메라 모델 관련 레이어는 유지
-        if (target.gameObject.layer == localCameraLayer)
+        // 카메라 모델 / 스킬 숨김용 레이어는 유지
+        if (target.gameObject.layer == camLocalLayer)
             return;
 
-        if (target.gameObject.layer == worldCameraLayer)
+        if (target.gameObject.layer == camWorldLayer)
             return;
 
-        if (target.gameObject.layer == ownerHiddenLayer)
+        if (target.gameObject.layer == hideSelfLayer)
             return;
 
         target.gameObject.layer = layer;

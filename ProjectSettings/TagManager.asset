@@ -23,9 +23,9 @@ TagManager:
   - Downed
   - Door
   - Sur_Trigger
-  - LocalCameraModel
-  - WorldCameraModel
-  - OwnerWorldCameraHidden
+  - CamLocal
+  - CamWorld
+  - HideSelf
   - 
   - 
   - 
