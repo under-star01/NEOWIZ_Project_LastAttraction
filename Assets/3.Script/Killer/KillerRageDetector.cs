@@ -48,7 +48,8 @@ public class KillerRageDetector : NetworkBehaviour
         {
             Debug.Log($"[RageDetector] 감지된 콜라이더: {hit.gameObject.name}");
 
-            SurvivorVisualEffect vfx = hit.GetComponentInParent<SurvivorVisualEffect>();
+            SurvivorVisualEffect vfx = hit.GetComponentInParent<SurvivorVisualEffect>()
+                        ?? hit.GetComponentInChildren<SurvivorVisualEffect>();
             Debug.Log($"[RageDetector] SurvivorVisualEffect 존재 여부: {vfx != null}");
 
             if (vfx == null) continue;
