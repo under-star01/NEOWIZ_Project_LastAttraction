@@ -107,6 +107,7 @@ public class KillerState : NetworkBehaviour
 
     private void OnRageChanged(bool oldVal, bool newVal)
     {
-        
+        if (!newVal) return;
+        GetComponent<KillerRageDetector>()?.SetActive(true);
     }
 }
