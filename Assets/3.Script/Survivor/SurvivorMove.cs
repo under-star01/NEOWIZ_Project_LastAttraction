@@ -116,26 +116,37 @@ public class SurvivorMove : NetworkBehaviour
         syncedModelYaw = modelRoot.eulerAngles.y;
     }
 
-    // 내 몸 모델의 레이어를 통째로 바꿀 때 사용
-    // 스킬 카메라에서 자기 몸만 숨기고 싶을 때 호출한다.
     public void SetModelLayer(int layer)
     {
         if (modelRoot == null)
             return;
 
-        SetLayerRecursive(modelRoot, layer);
+        SetModelLayerRecursive(modelRoot, layer);
     }
 
-    // modelRoot와 자식들의 레이어를 전부 같은 값으로 바꾼다.
-    private void SetLayerRecursive(Transform target, int layer)
+    // modelRoot 아래를 돌면서 몸 모델만 레이어를 바꾼다.
+    // 카메라 모델 관련 레이어는 유지해서 손에 붙어 있어도 같이 숨겨지지 않게 한다.
+    private void SetModelLayerRecursive(Transform target, int layer)
     {
         if (target == null)
             return;
 
+        int camLocalLayer = LayerMask.NameToLayer("CamLocal");
+        int camWorldLayer = LayerMask.NameToLayer("CamWorld");
+        int hideSelfLayer = LayerMask.NameToLayer("HideSelf");
+
+        // 카메라 모델 관련 레이어는 유지
+        if (target.gameObject.layer == camLocalLayer ||
+            target.gameObject.layer == camWorldLayer ||
+            target.gameObject.layer == hideSelfLayer)
+        {
+            return;
+        }
+
         target.gameObject.layer = layer;
 
         for (int i = 0; i < target.childCount; i++)
-            SetLayerRecursive(target.GetChild(i), layer);
+            SetModelLayerRecursive(target.GetChild(i), layer);
     }
 
     private void Awake()
