@@ -2634,9 +2634,12 @@ MonoBehaviour:
   killerLayerMask:
     serializedVersion: 2
     m_Bits: 256
-  detectDistance: 12
-  detectAngle: 60
-  rayCount: 15
+  cameraDetectBlockMask:
+    serializedVersion: 2
+    m_Bits: 1344
+  detectDistance: 25
+  detectAngle: 35
+  rayCount: 30
   detectInterval: 0.1
   detectHeight: 1.5
   drawDebugRay: 1

@@ -1,5 +1,7 @@
 using UnityEngine;
 using Unity.Cinemachine;
+using UnityEngine.UI;
+using System.Collections.Generic;
 
 public class LobbySceneBinder : MonoBehaviour
 {
@@ -9,6 +11,7 @@ public class LobbySceneBinder : MonoBehaviour
     [SerializeField] private ProgressUI progressUI;
     [SerializeField] private QTEUI qteUI;
     [SerializeField] private CameraSkillUI cameraSkillUI;
+    [SerializeField] private Image[] frameUI;
 
     private void Awake()
     {
@@ -28,5 +31,10 @@ public class LobbySceneBinder : MonoBehaviour
     public CameraSkillUI GetCameraSkillUI()
     {
         return cameraSkillUI;
+    }
+
+    public Image[] GetFrameUI()
+    {
+        return frameUI;
     }
 }

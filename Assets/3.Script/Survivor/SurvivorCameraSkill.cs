@@ -1,6 +1,7 @@
 using Mirror;
 using Unity.Cinemachine;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class SurvivorCameraSkill : NetworkBehaviour
 {
@@ -25,12 +26,19 @@ public class SurvivorCameraSkill : NetworkBehaviour
     [Header("카메라 탐지")]
     [SerializeField] private Transform detectOrigin;        // Ray 시작 기준 위치
     [SerializeField] private LayerMask killerLayerMask;     // Killer Layer
+    [SerializeField] private LayerMask cameraDetectBlockMask;   // Obstacle, Killer, Survivor Layer
     [SerializeField] private float detectDistance = 12f;    // 탐지 거리
     [SerializeField] private float detectAngle = 60f;       // 부채꼴 시야각
     [SerializeField] private int rayCount = 15;             // Ray 개수
     [SerializeField] private float detectInterval = 0.1f;   // 탐지 간격
     [SerializeField] private float detectHeight = 1.5f;     // 고정 탐지 높이
     [SerializeField] private bool drawDebugRay = true;      // Scene View Ray 표시
+
+    [Header("카메라 프레임 UI")]
+    [SerializeField] private Image[] frameImages;
+    [SerializeField] private Color normalFrameColor = Color.white;
+    [SerializeField] private Color detectedFrameColor = Color.red;
+    [SerializeField] private float detectedHoldTime = 0.25f;
 
     [SyncVar(hook = nameof(OnSkillChanged))]
     private bool isUse;
@@ -46,6 +54,9 @@ public class SurvivorCameraSkill : NetworkBehaviour
     private int survivorLayer;
     private int downedLayer;
     private float nextDetectTime;
+
+    private float lastKillerDetectedTime = -999f;
+    private bool isFrameDetected;
 
     private void Awake()
     {
@@ -84,6 +95,8 @@ public class SurvivorCameraSkill : NetworkBehaviour
         hideSelfLayer = LayerMask.NameToLayer("HideSelf");
         survivorLayer = LayerMask.NameToLayer("Survivor");
         downedLayer = LayerMask.NameToLayer("Downed");
+
+        SetFrameDetected(false, true);
     }
 
     public override void OnStartLocalPlayer()
@@ -141,7 +154,14 @@ public class SurvivorCameraSkill : NetworkBehaviour
 
         // 카메라 스킬 사용 중일 때만 Killer 탐지
         if (isUse)
+        {
             DetectKillerInCameraView();
+            UpdateFrameDetectState();
+        }
+        else
+        {
+            SetFrameDetected(false);
+        }
     }
 
     // 스킬 사용 가능 여부 검사
@@ -189,6 +209,9 @@ public class SurvivorCameraSkill : NetworkBehaviour
 
             // 로컬 UI / 카메라 반영
             ApplyLocalView(newValue);
+
+            if (!newValue)
+                SetFrameDetected(false, true);
         }
     }
 
@@ -204,6 +227,9 @@ public class SurvivorCameraSkill : NetworkBehaviour
             return;
 
         if (killerLayerMask.value == 0)
+            return;
+
+        if (cameraDetectBlockMask.value == 0)
             return;
 
         int safeRayCount = Mathf.Max(1, rayCount);
@@ -241,26 +267,70 @@ public class SurvivorCameraSkill : NetworkBehaviour
                 rayDir,
                 out RaycastHit hit,
                 detectDistance,
-                killerLayerMask
+                cameraDetectBlockMask
             );
+
+            bool isKiller = false;
+
+            if (isHit)
+                isKiller = IsInLayerMask(hit.collider.gameObject.layer, killerLayerMask);
 
             if (drawDebugRay)
             {
-                Color rayColor = isHit ? Color.red : Color.green;
+                Color rayColor = Color.green;
+
+                if (isHit)
+                    rayColor = isKiller ? Color.red : Color.yellow;
+
                 Debug.DrawRay(origin, rayDir * detectDistance, rayColor, detectInterval);
             }
 
-            if (isHit)
+            if (isHit && isKiller)
             {
+                lastKillerDetectedTime = Time.time;
                 Debug.Log($"[CameraSkill] 카메라 시야 안에서 Killer 탐지: {hit.collider.name}");
                 return;
             }
         }
     }
 
+    // 마지막 탐지 이후 일정 시간 동안은 촬영 중으로 유지한다
+    private void UpdateFrameDetectState()
+    {
+        bool detected = Time.time <= lastKillerDetectedTime + detectedHoldTime;
+        SetFrameDetected(detected);
+    }
+
+    // 프레임 UI 색상 변경
+    private void SetFrameDetected(bool detected, bool force = false)
+    {
+        if (!force && isFrameDetected == detected)
+            return;
+
+        isFrameDetected = detected;
+
+        Color targetColor = detected ? detectedFrameColor : normalFrameColor;
+
+        for (int i = 0; i < frameImages.Length; i++)
+        {
+            if (frameImages[i] == null)
+                continue;
+
+            frameImages[i].color = targetColor;
+        }
+    }
+
+    private bool IsInLayerMask(int layer, LayerMask layerMask)
+    {
+        return (layerMask.value & (1 << layer)) != 0;
+    }
+
     // 씬 UI 찾기
     private void BindUI()
     {
+        if (frameImages == null && LobbySceneBinder.Instance != null)
+            frameImages = LobbySceneBinder.Instance.GetFrameUI();
+
         if (skillUI == null && LobbySceneBinder.Instance != null)
             skillUI = LobbySceneBinder.Instance.GetCameraSkillUI();
 
@@ -338,6 +408,8 @@ public class SurvivorCameraSkill : NetworkBehaviour
             if (localCameraModel != null)
                 localCameraModel.SetActive(false);
 
+            SetFrameDetected(false, true);
+
             return;
         }
 
@@ -371,5 +443,8 @@ public class SurvivorCameraSkill : NetworkBehaviour
             else
                 skillUI.Hide();
         }
+
+        if (!value)
+            SetFrameDetected(false, true);
     }
 }

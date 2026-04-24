@@ -1669,6 +1669,11 @@ MonoBehaviour:
   progressUI: {fileID: 1556038587}
   qteUI: {fileID: 956838514467486886}
   cameraSkillUI: {fileID: 2105633327}
+  frameUI:
+  - {fileID: 4354069543133102449}
+  - {fileID: 8299052277759403933}
+  - {fileID: 7329744039908808154}
+  - {fileID: 7653918584967381055}
 --- !u!4 &591203397
 Transform:
   m_ObjectHideFlags: 0
