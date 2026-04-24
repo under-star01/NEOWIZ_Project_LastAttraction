@@ -10,8 +10,12 @@ public class KillerState : NetworkBehaviour
     [Header("Sync Variables")]
     [SyncVar(hook = nameof(OnConditionChanged))]
     private KillerCondition currentCondition = KillerCondition.Idle;
-
     public KillerCondition CurrentCondition => currentCondition;
+
+    [SyncVar(hook = nameof(OnRageChanged))]
+    [SerializeField] private bool isRaging = false;
+    public bool IsRaging => isRaging;
+
 
     public bool CanMove =>
         currentCondition == KillerCondition.Idle ||
@@ -30,6 +34,12 @@ public class KillerState : NetworkBehaviour
     private void Awake()
     {
         animator = GetComponentInChildren<Animator>();
+    }
+
+    private void Update()
+    {
+        if (!isLocalPlayer) return;
+        if (Input.GetKeyDown(KeyCode.Alpha1)) CmdTestActivateRage();
     }
 
     [Server]
@@ -80,5 +90,31 @@ public class KillerState : NetworkBehaviour
     {
         // 클라이언트의 요청을 받아 서버에서 실제 상태를 변경합니다.
         ChangeState(newState);
+    }
+
+    [Server]
+    public void ActivateRage()
+    {
+        Debug.Log($"[KillerState] ActivateRage 호출됨 / 현재 isRaging: {isRaging}");
+        if (isRaging) return;
+        isRaging = true;
+        Debug.Log("[KillerState] isRaging = true 설정 완료");
+    }
+
+    [Command]
+    private void CmdTestActivateRage()
+    {
+        Debug.Log("[KillerState] CmdTestActivateRage 호출됨 (서버)");
+        ActivateRage();
+    }
+
+    private void OnRageChanged(bool oldVal, bool newVal)
+    {
+        Debug.Log($"[KillerState] OnRageChanged 호출됨 / newVal: {newVal} / isLocalPlayer: {isLocalPlayer}");
+        if (!newVal) return;
+
+        var detector = GetComponent<KillerRageDetector>();
+        Debug.Log($"[KillerState] KillerRageDetector 존재 여부: {detector != null}");
+        detector?.SetActive(true);
     }
 }
