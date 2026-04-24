@@ -35,10 +35,10 @@ public class SurvivorCameraSkill : NetworkBehaviour
     [SerializeField] private bool drawDebugRay = true;      // Scene View Ray 표시
 
     [Header("카메라 프레임 UI")]
-    [SerializeField] private Image[] frameImages;
     [SerializeField] private Color normalFrameColor = Color.white;
     [SerializeField] private Color detectedFrameColor = Color.red;
     [SerializeField] private float detectedHoldTime = 0.25f;
+    private Image[] frameImages;
 
     [SyncVar(hook = nameof(OnSkillChanged))]
     private bool isUse;
@@ -328,7 +328,7 @@ public class SurvivorCameraSkill : NetworkBehaviour
     // 씬 UI 찾기
     private void BindUI()
     {
-        if (frameImages == null && LobbySceneBinder.Instance != null)
+        if (LobbySceneBinder.Instance != null)
             frameImages = LobbySceneBinder.Instance.GetFrameUI();
 
         if (skillUI == null && LobbySceneBinder.Instance != null)

@@ -66,6 +66,7 @@ public class CustomNetworkManager : NetworkManager
 
     private JoinRole localJoinRole = JoinRole.None;
     private readonly Dictionary<int, JoinRole> joinedRoles = new();
+    private readonly Dictionary<int, int> survivorPrefabIndexByConnection = new();
     private readonly List<RoomProbeResponseMessage> probedRooms = new();
 
     private int currentPortIndex = -1; // 현재 탐색중인 포트 Index
@@ -360,6 +361,7 @@ public class CustomNetworkManager : NetworkManager
     public override void OnStopServer()
     {
         joinedRoles.Clear();
+        survivorPrefabIndexByConnection.Clear();
         base.OnStopServer();
     }
 
@@ -378,6 +380,8 @@ public class CustomNetworkManager : NetworkManager
     public override void OnServerDisconnect(NetworkConnectionToClient conn)
     {
         joinedRoles.Remove(conn.connectionId);
+        survivorPrefabIndexByConnection.Remove(conn.connectionId);
+
         base.OnServerDisconnect(conn);
     }
 
@@ -594,6 +598,8 @@ public class CustomNetworkManager : NetworkManager
         GameObject prefabToSpawn = null;
         Transform spawnPoint = null;
 
+        int survivorIndex = -1;
+
         switch (role)
         {
             case JoinRole.Killer:
@@ -602,11 +608,16 @@ public class CustomNetworkManager : NetworkManager
                 break;
 
             case JoinRole.Survivor:
+                survivorIndex = GetAvailableSurvivorPrefabIndex();
 
-                int survivorIndex = GetCurrentSurvivorCount();
+                if (survivorIndex < 0)
+                {
+                    reason = "사용 가능한 Survivor 프리팹이 없습니다.";
+                    return false;
+                }
 
                 prefabToSpawn = GetSurvivorPrefab(survivorIndex);
-                spawnPoint = GetSurvivorSpawnPoint(GetCurrentSurvivorCount());
+                spawnPoint = GetSurvivorSpawnPoint(survivorIndex);
                 break;
         }
 
@@ -624,6 +635,10 @@ public class CustomNetworkManager : NetworkManager
 
         GameObject playerObj = Instantiate(prefabToSpawn, spawnPoint.position, spawnPoint.rotation);
         NetworkServer.AddPlayerForConnection(conn, playerObj);
+
+        if (role == JoinRole.Survivor)
+            survivorPrefabIndexByConnection[conn.connectionId] = survivorIndex;
+
         return true;
     }
 
@@ -645,6 +660,32 @@ public class CustomNetworkManager : NetworkManager
 
         return survivorPrefabs[survivorIndex];
     }
+
+    private int GetAvailableSurvivorPrefabIndex()
+    {
+        if (survivorPrefabs == null || survivorPrefabs.Count == 0)
+            return -1;
+
+        for (int i = 0; i < survivorPrefabs.Count; i++)
+        {
+            if (!IsSurvivorPrefabIndexUsed(i))
+                return i;
+        }
+
+        return -1;
+    }
+
+    private bool IsSurvivorPrefabIndexUsed(int index)
+    {
+        foreach (var pair in survivorPrefabIndexByConnection)
+        {
+            if (pair.Value == index)
+                return true;
+        }
+
+        return false;
+    }
+
     #endregion
 
     #region Utils
@@ -686,8 +727,10 @@ public class CustomNetworkManager : NetworkManager
         if (survivorSpawnPoints == null || survivorSpawnPoints.Count == 0)
             return null;
 
-        int index = Mathf.Clamp(survivorIndex, 0, survivorSpawnPoints.Count - 1);
-        return survivorSpawnPoints[index];
+        if (survivorIndex < 0 || survivorIndex >= survivorSpawnPoints.Count)
+            return null;
+
+        return survivorSpawnPoints[survivorIndex];
     }
 
     public void MoveToGameScene()
