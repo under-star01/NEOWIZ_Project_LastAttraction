@@ -53,7 +53,7 @@ public class CustomNetworkManager : NetworkManager
 
     [Header("Role Prefabs")]
     [SerializeField] private GameObject killerPrefab;
-    [SerializeField] private GameObject survivorPrefab;
+    [SerializeField] private List<GameObject> survivorPrefabs = new();
 
     [Header("Spawn Points")]
     [SerializeField] private Transform killerSpawnPoint;
@@ -602,7 +602,10 @@ public class CustomNetworkManager : NetworkManager
                 break;
 
             case JoinRole.Survivor:
-                prefabToSpawn = survivorPrefab;
+
+                int survivorIndex = GetCurrentSurvivorCount();
+
+                prefabToSpawn = GetSurvivorPrefab(survivorIndex);
                 spawnPoint = GetSurvivorSpawnPoint(GetCurrentSurvivorCount());
                 break;
         }
@@ -632,6 +635,16 @@ public class CustomNetworkManager : NetworkManager
             conn.Disconnect();
     }
 
+    private GameObject GetSurvivorPrefab(int survivorIndex)
+    {
+        if (survivorPrefabs == null || survivorPrefabs.Count == 0)
+            return null;
+
+        if (survivorIndex < 0 || survivorIndex >= survivorPrefabs.Count)
+            return null;
+
+        return survivorPrefabs[survivorIndex];
+    }
     #endregion
 
     #region Utils
