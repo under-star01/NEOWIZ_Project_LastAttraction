@@ -186,6 +186,7 @@ GameObject:
   - component: {fileID: 615536801061671101}
   - component: {fileID: 1244208178665021758}
   - component: {fileID: 5600658581464517564}
+  - component: {fileID: 5381196036305254313}
   m_Layer: 0
   m_Name: Prison
   m_TagString: Untagged
@@ -257,6 +258,28 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 200, y: 200, z: 100}
   m_Center: {x: 0, y: 100, z: 125}
+--- !u!114 &5381196036305254313
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2419739530697200554}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0808e826e43f6054a9ad35652e963d3d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Prison
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  prisonerPoint: {fileID: 615536801061671101}
+  lookPoint: {fileID: 2724129334906575731}
+  animator: {fileID: 1244208178665021758}
+  doorBlocker: {fileID: 6835108778184151923}
+  interactTime: 3
+  escapeChance: 5
+  failPenalty: 20
 --- !u!1 &4307833045745348463
 GameObject:
   m_ObjectHideFlags: 0
