@@ -95,8 +95,6 @@ public class SurvivorCameraSkill : NetworkBehaviour
         hideSelfLayer = LayerMask.NameToLayer("HideSelf");
         survivorLayer = LayerMask.NameToLayer("Survivor");
         downedLayer = LayerMask.NameToLayer("Downed");
-
-        SetFrameDetected(false, true);
     }
 
     public override void OnStartLocalPlayer()
