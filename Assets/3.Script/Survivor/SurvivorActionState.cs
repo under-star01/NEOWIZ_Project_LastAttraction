@@ -3,11 +3,10 @@ using Mirror;
 using UnityEngine;
 
 // 생존자의 현재 행동 상태
-// 이동 상태와 몸 상태와는 별개로
-// "지금 어떤 행동 때문에 다른 행동을 막아야 하는가"를 관리한다.
 public enum SurvivorAction
 {
     None,
+    Hit,
     DownHit,
     Healing,
     Interacting,
@@ -45,7 +44,6 @@ public class SurvivorActionState : NetworkBehaviour
     public bool IsCamSkill => isCamSkill;
     public bool IsVault => currentAction == SurvivorAction.Vault;
 
-    // 실제로 강하게 행동을 막는 상태만 Busy로 취급한다.
     public bool IsBusy =>
         currentAction == SurvivorAction.DownHit ||
         currentAction == SurvivorAction.Stunned ||
@@ -157,7 +155,7 @@ public class SurvivorActionState : NetworkBehaviour
         ApplyUse();
     }
 
-    // DownHit, Stunned 상태에서는 이동을 막는다.
+    // DownHit, Stunned 상태에서는 이동을 막는다
     private void ApplyLock()
     {
         if (move == null)
@@ -179,8 +177,6 @@ public class SurvivorActionState : NetworkBehaviour
     }
 
     // 상태에 따라 SurvivorInteractor 자체를 켜고 끈다.
-    // 감옥 상태는 여기서 막지 않는다.
-    // 그래야 감옥 안에서 탈출 상호작용을 할 수 있다.
     public void ApplyUse()
     {
         if (interactor == null)
@@ -208,6 +204,49 @@ public class SurvivorActionState : NetworkBehaviour
             canUse = false;
 
         interactor.enabled = canUse;
+    }
+
+    // 일반 피격 연출
+    // Healthy -> Injured가 될 때 사용한다.
+    // DownHit과 다르게 이동 잠금 없이 Hit 애니메이션만 재생한다.
+    [Server]
+    public IEnumerator HitRoutine(float time)
+    {
+        if (time <= 0f)
+            yield break;
+
+        // 더 강한 행동 상태일 때는 일반 Hit으로 덮어쓰지 않는다.
+        if (currentAction == SurvivorAction.DownHit)
+            yield break;
+
+        if (currentAction == SurvivorAction.Stunned)
+            yield break;
+
+        if (currentAction == SurvivorAction.Vault)
+            yield break;
+
+        currentAction = SurvivorAction.Hit;
+
+        if (move != null)
+        {
+            move.SetCamAnim(false);
+            move.PlayAnimation("Hit");
+        }
+        else if (animator != null)
+        {
+            animator.SetTrigger("Hit");
+        }
+
+        // ApplyState를 호출해도 Hit은 Busy / Lock / Use 차단에 포함되지 않는다.
+        ApplyState();
+
+        yield return new WaitForSeconds(time);
+
+        if (currentAction == SurvivorAction.Hit)
+        {
+            currentAction = SurvivorAction.None;
+            ApplyState();
+        }
     }
 
     // 다운 피격 연출

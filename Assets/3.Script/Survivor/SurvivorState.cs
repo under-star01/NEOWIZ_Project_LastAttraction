@@ -18,8 +18,9 @@ public class SurvivorState : NetworkBehaviour
     [SerializeField] private Animator animator;
     [SerializeField] private SurvivorInteractor interactor;
 
-    [Header("다운 연출")]
-    [SerializeField] private float downHitDuration = 3f;
+    [Header("피격 연출")]
+    [SerializeField] private float hitDuration = 0.8f;      // Healthy -> Injured 일반 피격 애니메이션 시간
+    [SerializeField] private float downHitDuration = 3f;    // Injured -> Downed 다운 피격 시간
 
     [Header("감옥 시간")]
     [SerializeField] private float prisonFullTime = 120f;
@@ -115,6 +116,7 @@ public class SurvivorState : NetworkBehaviour
     [Server]
     public void TakeHit()
     {
+        // 다운 피격 중에는 추가 피격 무시
         if (actionState != null && actionState.CurrentAction == SurvivorAction.DownHit)
             return;
 
@@ -122,26 +124,37 @@ public class SurvivorState : NetworkBehaviour
             return;
 
         StopAllCoroutines();
+
         if (actionState != null)
             actionState.ForceResetActionServer();
 
-        if (interactor != null)
-            interactor.ForceStopInteract();
-
+        // Healthy -> Injured
+        // 일반 피격은 이동 잠금 없이 Hit 애니메이션만 재생한다.
         if (currentCondition == SurvivorCondition.Healthy)
         {
             currentCondition = SurvivorCondition.Injured;
             ApplyAllStateServer();
+
+            if (actionState != null)
+                StartCoroutine(actionState.HitRoutine(hitDuration));
+
             return;
         }
 
+        // Injured -> Downed
+        // 다운 피격은 기존처럼 상호작용을 끊고 이동을 잠근다.
         if (currentCondition == SurvivorCondition.Injured)
         {
+            if (interactor != null)
+                interactor.ForceStopInteract();
+
             currentCondition = SurvivorCondition.Downed;
             ApplyAllStateServer();
 
             if (actionState != null)
                 StartCoroutine(actionState.DownHitRoutine(downHitDuration));
+
+            return;
         }
     }
 
@@ -250,6 +263,13 @@ public class SurvivorState : NetworkBehaviour
             return;
 
         StartCoroutine(actionState.StunRoutine(duration));
+    }
+
+    // 기존 Trap 코드가 ApplyTrapStun을 호출하는 경우를 위한 호환 함수
+    [Server]
+    public void ApplyTrapStun(float duration)
+    {
+        ApplyStun(duration);
     }
 
     // 서버에서 상태 즉시 반영
