@@ -13,7 +13,7 @@ public class KillerState : NetworkBehaviour
     public KillerCondition CurrentCondition => currentCondition;
 
     [SyncVar(hook = nameof(OnRageChanged))]
-    private bool isRaging = false;
+    [SerializeField] private bool isRaging = false;
     public bool IsRaging => isRaging;
 
 
@@ -95,19 +95,26 @@ public class KillerState : NetworkBehaviour
     [Server]
     public void ActivateRage()
     {
+        Debug.Log($"[KillerState] ActivateRage 호출됨 / 현재 isRaging: {isRaging}");
         if (isRaging) return;
         isRaging = true;
+        Debug.Log("[KillerState] isRaging = true 설정 완료");
     }
 
     [Command]
     private void CmdTestActivateRage()
     {
+        Debug.Log("[KillerState] CmdTestActivateRage 호출됨 (서버)");
         ActivateRage();
     }
 
     private void OnRageChanged(bool oldVal, bool newVal)
     {
+        Debug.Log($"[KillerState] OnRageChanged 호출됨 / newVal: {newVal} / isLocalPlayer: {isLocalPlayer}");
         if (!newVal) return;
-        GetComponent<KillerRageDetector>()?.SetActive(true);
+
+        var detector = GetComponent<KillerRageDetector>();
+        Debug.Log($"[KillerState] KillerRageDetector 존재 여부: {detector != null}");
+        detector?.SetActive(true);
     }
 }

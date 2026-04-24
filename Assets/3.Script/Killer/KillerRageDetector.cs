@@ -19,6 +19,7 @@ public class KillerRageDetector : NetworkBehaviour
     public void SetActive(bool value)
     {
         isActive = value;
+        Debug.Log($"[RageDetector] SetActive({value}) 호출됨");
         if (!value) ClearAllEffects();
     }
 
@@ -36,30 +37,36 @@ public class KillerRageDetector : NetworkBehaviour
 
     private void DetectSurvivors()
     {
-        HashSet<SurvivorVisualEffect> detectedThisFrame = new();
-
         Collider[] hits = Physics.OverlapSphere(
-            transform.position, detectRadius, survivorLayer);
+        transform.position, detectRadius, survivorLayer);
+
+        Debug.Log($"[RageDetector] OverlapSphere 감지 수: {hits.Length} / 위치: {transform.position}");
+
+        HashSet<SurvivorVisualEffect> detectedThisFrame = new();
 
         foreach (var hit in hits)
         {
-            SurvivorVisualEffect vfx =
-                hit.GetComponentInParent<SurvivorVisualEffect>();
+            Debug.Log($"[RageDetector] 감지된 콜라이더: {hit.gameObject.name}");
+
+            SurvivorVisualEffect vfx = hit.GetComponentInParent<SurvivorVisualEffect>();
+            Debug.Log($"[RageDetector] SurvivorVisualEffect 존재 여부: {vfx != null}");
+
             if (vfx == null) continue;
 
             bool hasLOS = CheckLineOfSight(hit.transform.position);
+            Debug.Log($"[RageDetector] LOS 결과: {hasLOS}");
             vfx.SetDetected(hasLOS);
 
             detectedThisFrame.Add(vfx);
             activeEffects.Add(vfx);
         }
 
-        // 이번 프레임에 탐지 안 된 생존자 효과 제거
         foreach (var vfx in activeEffects)
         {
             if (!detectedThisFrame.Contains(vfx))
                 vfx.SetUndetected();
         }
+
         activeEffects = detectedThisFrame;
     }
 
