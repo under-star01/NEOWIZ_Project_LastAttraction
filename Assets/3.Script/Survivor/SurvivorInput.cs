@@ -20,7 +20,10 @@ public class SurvivorInput : NetworkBehaviour
 
     private void Awake()
     {
-        TryGetComponent(out SurvivorCameraSkill camera);
+        camera = GetComponent<SurvivorCameraSkill>();
+
+        if (camera == null)
+            Debug.LogError("[SurvivorInput] SurvivorCameraSkill 컴포넌트를 찾지 못했습니다.", this);
     }
 
     // 이동 입력
@@ -182,21 +185,30 @@ public class SurvivorInput : NetworkBehaviour
         if (!isLocalPlayer)
             return;
 
+        if (camera == null)
+        {
+            camera = GetComponent<SurvivorCameraSkill>();
+
+            if (camera == null)
+            {
+                Debug.LogError("[SurvivorInput] camera가 null이라 ApplyInputMode를 적용할 수 없습니다.", this);
+                return;
+            }
+        }
+
         // 입력 잠금 상태 = 로비
-        // UI 클릭이 가능하도록 커서를 풀어준다.
         if (!value)
         {
-            camera.ApplyLobbyView(false);
+            camera.ApplyLobbyView(true);
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
             return;
         }
 
         // 입력 가능 상태 = 게임 중
-        // 1인칭 조작처럼 커서를 잠근다.
         if (lockCursorWhenInputEnabled)
         {
-            camera.ApplyLobbyView(true);
+            camera.ApplyLobbyView(false);
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
         }
