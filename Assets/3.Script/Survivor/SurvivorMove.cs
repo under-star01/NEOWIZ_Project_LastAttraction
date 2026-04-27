@@ -181,9 +181,6 @@ public class SurvivorMove : NetworkBehaviour
 
         if (playerListener != null)
             playerListener.enabled = true;
-
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
     }
 
     public override void OnStartClient()

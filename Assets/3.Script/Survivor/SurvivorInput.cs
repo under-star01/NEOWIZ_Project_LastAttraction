@@ -6,12 +6,22 @@ public class SurvivorInput : NetworkBehaviour
 {
     private InputSystem inputSys;
 
+    [Header("입력 상태")]
+    [SerializeField] private bool lockCursorWhenInputEnabled = true;
+
+    // 서버가 관리하는 생존자 입력 가능 여부
+    // false면 로컬 플레이어여도 이동, 시야, 상호작용, 스킬 입력을 모두 무시한다.
+    [SyncVar(hook = nameof(OnInputEnabledChanged))]
+    private bool canReceiveInput = false;
+
+    public bool CanReceiveInput => canReceiveInput;
+
     // 이동 입력
     public Vector2 Move
     {
         get
         {
-            if (inputSys == null)
+            if (!CanReadInput())
                 return Vector2.zero;
 
             return inputSys.Player.Move.ReadValue<Vector2>();
@@ -23,7 +33,7 @@ public class SurvivorInput : NetworkBehaviour
     {
         get
         {
-            if (inputSys == null)
+            if (!CanReadInput())
                 return Vector2.zero;
 
             return inputSys.Player.Look.ReadValue<Vector2>();
@@ -35,7 +45,7 @@ public class SurvivorInput : NetworkBehaviour
     {
         get
         {
-            if (inputSys == null)
+            if (!CanReadInput())
                 return false;
 
             return inputSys.Player.Run.IsPressed();
@@ -47,7 +57,7 @@ public class SurvivorInput : NetworkBehaviour
     {
         get
         {
-            if (inputSys == null)
+            if (!CanReadInput())
                 return false;
 
             return inputSys.Player.Crouch.IsPressed();
@@ -59,7 +69,7 @@ public class SurvivorInput : NetworkBehaviour
     {
         get
         {
-            if (inputSys == null)
+            if (!CanReadInput())
                 return false;
 
             return inputSys.Player.Interact1.IsPressed();
@@ -71,7 +81,7 @@ public class SurvivorInput : NetworkBehaviour
     {
         get
         {
-            if (inputSys == null)
+            if (!CanReadInput())
                 return false;
 
             return inputSys.Player.Interact2.WasPressedThisFrame();
@@ -83,7 +93,7 @@ public class SurvivorInput : NetworkBehaviour
     {
         get
         {
-            if (inputSys == null)
+            if (!CanReadInput())
                 return false;
 
             return inputSys.Player.CameraSkill.IsPressed();
@@ -92,8 +102,13 @@ public class SurvivorInput : NetworkBehaviour
 
     public override void OnStartLocalPlayer()
     {
+        base.OnStartLocalPlayer();
+
         inputSys = new InputSystem();
         inputSys.Player.Enable();
+
+        // 생성 직후 현재 입력 상태 반영
+        ApplyInputMode(canReceiveInput);
     }
 
     public override void OnStopClient()
@@ -101,6 +116,86 @@ public class SurvivorInput : NetworkBehaviour
         base.OnStopClient();
 
         if (isLocalPlayer && inputSys != null)
+        {
             inputSys.Player.Disable();
+            inputSys = null;
+        }
+    }
+
+    private void Update()
+    {
+        if (!isLocalPlayer)
+            return;
+
+        // 테스트용 디버그 입력
+        // 입력 잠금 상태여도 F3은 먹어야 하므로 InputSystem 프로퍼티가 아니라 Unity 기본 입력으로 검사한다.
+        if (Input.GetKeyDown(KeyCode.F3))
+            CmdDebugToggleSurvivorInput();
+    }
+
+    // 서버에서 호출하는 입력 상태 변경 함수
+    [Server]
+    public void SetInputEnabledServer(bool value)
+    {
+        canReceiveInput = value;
+    }
+
+    // F3 테스트용
+    // 로컬 생존자가 서버에 입력 상태 토글을 요청한다.
+    [Command]
+    private void CmdDebugToggleSurvivorInput()
+    {
+        if (GameManager.Instance == null)
+        {
+            Debug.LogWarning("[SurvivorInput] GameManager가 씬에 없습니다.");
+            return;
+        }
+
+        GameManager.Instance.ToggleAllSurvivorInput();
+    }
+
+    // 실제 입력값을 읽어도 되는지 검사
+    private bool CanReadInput()
+    {
+        if (!isLocalPlayer)
+            return false;
+
+        if (inputSys == null)
+            return false;
+
+        if (!canReceiveInput)
+            return false;
+
+        return true;
+    }
+
+    // 서버에서 canReceiveInput 값이 바뀌면 클라이언트에서도 호출된다.
+    private void OnInputEnabledChanged(bool oldValue, bool newValue)
+    {
+        ApplyInputMode(newValue);
+    }
+
+    // 로비 / 게임 상태에 맞게 커서 상태를 바꾼다.
+    private void ApplyInputMode(bool value)
+    {
+        if (!isLocalPlayer)
+            return;
+
+        // 입력 잠금 상태 = 로비
+        // UI 클릭이 가능하도록 커서를 풀어준다.
+        if (!value)
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            return;
+        }
+
+        // 입력 가능 상태 = 게임 중
+        // 1인칭 조작처럼 커서를 잠근다.
+        if (lockCursorWhenInputEnabled)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
     }
 }
