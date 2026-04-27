@@ -11534,6 +11534,7 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
+  isRaging: 0
 --- !u!114 &3390365132958246041
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11553,7 +11554,7 @@ MonoBehaviour:
   updateInterval: 0.15
   survivorLayer:
     serializedVersion: 2
-    m_Bits: 64
+    m_Bits: 393280
   obstacleLayer:
     serializedVersion: 2
     m_Bits: 1024
