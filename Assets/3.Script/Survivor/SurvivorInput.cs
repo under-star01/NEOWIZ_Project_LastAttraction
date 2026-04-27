@@ -127,10 +127,9 @@ public class SurvivorInput : NetworkBehaviour
         if (!isLocalPlayer)
             return;
 
-        // 테스트용 디버그 입력
-        // 입력 잠금 상태여도 F3은 먹어야 하므로 InputSystem 프로퍼티가 아니라 Unity 기본 입력으로 검사한다.
+        // 테스트용 F3 입력 토글
         if (Input.GetKeyDown(KeyCode.F3))
-            CmdDebugToggleSurvivorInput();
+            CmdDebugToggleLocalInput();
     }
 
     // 서버에서 호출하는 입력 상태 변경 함수
@@ -143,15 +142,10 @@ public class SurvivorInput : NetworkBehaviour
     // F3 테스트용
     // 로컬 생존자가 서버에 입력 상태 토글을 요청한다.
     [Command]
-    private void CmdDebugToggleSurvivorInput()
+    private void CmdDebugToggleLocalInput()
     {
-        if (GameManager.Instance == null)
-        {
-            Debug.LogWarning("[SurvivorInput] GameManager가 씬에 없습니다.");
-            return;
-        }
-
-        GameManager.Instance.ToggleAllSurvivorInput();
+        // F3을 누른 이 생존자만 입력 상태 변경
+        SetInputEnabledServer(!canReceiveInput);
     }
 
     // 실제 입력값을 읽어도 되는지 검사

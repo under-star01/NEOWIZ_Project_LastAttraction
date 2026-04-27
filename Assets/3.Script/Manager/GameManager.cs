@@ -65,16 +65,6 @@ public class GameManager : MonoBehaviour
         Debug.Log($"[GameManager] 생존자 입력 상태 변경: {value}");
     }
 
-    public void ToggleAllSurvivorInput()
-    {
-        // 서버가 아니면 실행하지 않음
-        if (!NetworkServer.active)
-            return;
-
-        // 현재 상태 반대로 변경
-        SetAllSurvivorInput(!survivorInputEnabled);
-    }
-
     public void StartGame()
     {
         // 게임 시작 시 입력 허용
