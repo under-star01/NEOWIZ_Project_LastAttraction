@@ -111,9 +111,6 @@ public class SurvivorCameraSkill : NetworkBehaviour
 
         if (skillCinemachine != null)
             skillCinemachine.gameObject.SetActive(true);
-
-        // 현재 상태 다시 반영
-        ApplyLocalView(isUse);
     }
 
     public override void OnStartClient()
@@ -450,8 +447,6 @@ public class SurvivorCameraSkill : NetworkBehaviour
     // 로비 카메라 뷰 적용 메소드
     public void ApplyLobbyView(bool value)
     {
-        if (normalCinemachine == null || skillCinemachine == null || lobbyCinemachine == null) return;
-
         if (value)
         {
             lobbyCinemachine.Priority = 30;
