@@ -3,8 +3,9 @@ using UnityEngine;
 
 public class EscapeGate : NetworkBehaviour
 {
-    [Header("문 오브젝트")]
-    [SerializeField] private GameObject gateObject;
+    [Header("문 큐브")]
+    [SerializeField] private Renderer gateRenderer;
+    [SerializeField] private Collider gateCollider;
 
     // 탈출문이 열렸는지 서버에서 동기화한다.
     [SyncVar(hook = nameof(OnOpenChanged))]
@@ -35,7 +36,7 @@ public class EscapeGate : NetworkBehaviour
 
         isOpen = true;
 
-        // 서버에서도 즉시 문 큐브를 비활성화한다.
+        // 서버에서도 즉시 문 표시와 충돌을 끈다.
         ApplyOpen(true);
 
         Debug.Log($"[EscapeGate] 탈출문 열림: {name}");
@@ -47,10 +48,13 @@ public class EscapeGate : NetworkBehaviour
         ApplyOpen(newValue);
     }
 
-    // 문이 열리면 오브젝트를 꺼서 통과 가능하게 만든다.
+    // 문이 열리면 Renderer와 Collider만 꺼서 네트워크 오브젝트는 유지한다.
     private void ApplyOpen(bool open)
     {
-        if (gateObject != null)
-            gateObject.SetActive(!open);
+        if (gateRenderer != null)
+            gateRenderer.enabled = !open;
+
+        if (gateCollider != null)
+            gateCollider.enabled = !open;
     }
 }
