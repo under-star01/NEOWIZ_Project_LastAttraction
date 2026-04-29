@@ -3162,10 +3162,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: Pallet (1)
       objectReference: {fileID: 0}
-    - target: {fileID: 833865828154330898, guid: 7e28d92277551844fa6503d4adf3aae8, type: 3}
-      propertyPath: syncDirection
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 6901615392935112166, guid: 7e28d92277551844fa6503d4adf3aae8, type: 3}
       propertyPath: sceneId
       value: 1519043279
