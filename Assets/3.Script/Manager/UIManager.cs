@@ -33,42 +33,8 @@ public class UIManager : MonoBehaviour
 
         Instance = this;
 
-        BindButtons();
         ShowRoleSelectUI();
         ShowLoading(false);
-    }
-
-    private void BindButtons()
-    {
-        if (killerButton != null)
-        {
-            killerButton.onClick.RemoveAllListeners();
-            killerButton.onClick.AddListener(OnClickConnectKiller);
-        }
-
-        if (survivorButton != null)
-        {
-            survivorButton.onClick.RemoveAllListeners();
-            survivorButton.onClick.AddListener(OnClickConnectSurvivor);
-        }
-
-        if (startButton != null)
-        {
-            startButton.onClick.RemoveAllListeners();
-            startButton.onClick.AddListener(OnClickStartButton);
-        }
-
-        if (readyButton != null)
-        {
-            readyButton.onClick.RemoveAllListeners();
-            readyButton.onClick.AddListener(OnClickReadyButton);
-        }
-
-        if (returnButton != null)
-        {
-            returnButton.onClick.RemoveAllListeners();
-            returnButton.onClick.AddListener(OnClickBackButton);
-        }
     }
 
     public void OnClickConnectKiller()
@@ -104,7 +70,7 @@ public class UIManager : MonoBehaviour
         ShowRoleSelectUI();
     }
 
-    private void OnClickReadyButton()
+    public void OnClickReadyButton()
     {
         if (CustomNetworkManager.Instance == null)
         {
@@ -119,7 +85,7 @@ public class UIManager : MonoBehaviour
         UpdateReadyButtonView();
     }
 
-    private void OnClickStartButton()
+    public void OnClickStartButton()
     {
         if (CustomNetworkManager.Instance == null)
         {
